@@ -1,41 +1,40 @@
 package bgu.spl171.net.api.bidi;
 
 import bgu.spl171.net.srv.bidi.ConnectionHandler;
-import bgu.spl171.net.srv.bidi.ConnectionHandlerImpl;
-
 import java.io.IOException;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class ConnectionsImpl<T> implements Connections<T> {
 
-    private ConcurrentLinkedQueue<ConnectionHandlerImpl> conL = null;
+    private AtomicInteger connId = new AtomicInteger(0);
+    private ConcurrentHashMap<Integer, ConnectionHandler> allConnection =new ConcurrentHashMap<>();
+
+    public int getNewConnectionId(){
+        return connId.getAndIncrement();
+    }
 
     public boolean send(int connectionId, T msg) {
-        for (ConnectionHandlerImpl connection: conL) {
-            if (connection.getConnId() == connectionId){
-                connection.send(msg);
-                return true;
-            }
+        if (allConnection.containsKey(connectionId)) {
+            allConnection.get(connectionId).send(msg);
+            return true;
         }
-        return false;
+        else {
+            return false;
+        }
     }
 
     public void broadcast(T msg) {
-        for (ConnectionHandlerImpl connection: conL) {
-            connection.send(msg);
-        }
+        allConnection.forEach( (k,v) -> v.send(msg) );
     }
 
     public void disconnect(int connectionId) throws IOException {
-        for (ConnectionHandlerImpl connection: conL) {
-            if (connection.getConnId() == connectionId){
-                connection.close();
-            }
-        }
+        allConnection.get(connectionId).close();
+        allConnection.remove(connectionId);
     }
 
-    public void add(ConnectionHandlerImpl conH) {
-        this.conL.add(conH);
+    public void add(ConnectionHandler conH, Integer id) {
+        allConnection.put(id, conH);
     }
 
 }

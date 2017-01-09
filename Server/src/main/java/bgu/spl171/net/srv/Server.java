@@ -27,8 +27,9 @@ public interface Server<T> extends Closeable {
             Supplier<MessageEncoderDecoder<T> > encoderDecoderFactory) {
 
         return new BaseServer<T>(port, protocolFactory, encoderDecoderFactory) {
-            @Override
-            protected void execute(BlockingConnectionHandler<T>  handler) {
+
+            protected void execute(BlockingConnectionHandler<T>  handler)
+            {
                 new Thread(handler).start();
             }
         };
