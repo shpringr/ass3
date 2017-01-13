@@ -1,5 +1,7 @@
 package bgu.spl171.net.api;
 
+import java.io.UnsupportedEncodingException;
+
 public interface MessageEncoderDecoder<T> {
 
     /**
@@ -9,7 +11,7 @@ public interface MessageEncoderDecoder<T> {
      * message
      * @return a message if this byte completes one or null if it doesnt.
      */
-    T decodeNextByte(byte nextByte);
+    T decodeNextByte(byte nextByte) throws UnsupportedEncodingException;
 
     /**
      * encodes the given message to bytes array

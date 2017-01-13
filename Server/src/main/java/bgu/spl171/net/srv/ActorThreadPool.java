@@ -11,10 +11,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+//create new task, put in the threadPool and execute
+
 public class ActorThreadPool {
 
     private final Map<Object, Queue<Runnable>> acts;
-    private final ReadWriteLock actsRWLock;
+    private final ReadWriteLock actsRWLock; //just one write
     private final Set<Object> playingNow;
     private final ExecutorService threads;
 
@@ -27,7 +29,7 @@ public class ActorThreadPool {
 
     public void submit(Object act, Runnable r) {
         synchronized (act) {
-            if (!playingNow.contains(act)) {
+            if (!playingNow.contains(act)) { //if act the act have no task to do
                 playingNow.add(act);
                 execute(r, act);
             } else {
@@ -67,7 +69,7 @@ public class ActorThreadPool {
     private void complete(Object act) {
         synchronized (act) {
             Queue<Runnable> pending = pendingRunnablesOf(act);
-            if (pending.isEmpty()) {
+            if (pending.isEmpty()) { //if there is more task to do
                 playingNow.remove(act);
             } else {
                 execute(pending.poll(), act);

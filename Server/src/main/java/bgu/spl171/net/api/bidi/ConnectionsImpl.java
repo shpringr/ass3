@@ -8,7 +8,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ConnectionsImpl<T> implements Connections<T> {
 
     private AtomicInteger connId = new AtomicInteger(0);
-    private ConcurrentHashMap<Integer, ConnectionHandler> allConnection =new ConcurrentHashMap<>();
+    private ConcurrentHashMap<Integer, ConnectionHandler<T>> allConnection =new ConcurrentHashMap<>();
 
     public int getNewConnectionId(){
         return connId.getAndIncrement();
@@ -33,7 +33,7 @@ public class ConnectionsImpl<T> implements Connections<T> {
         allConnection.remove(connectionId);
     }
 
-    public void add(ConnectionHandler conH, Integer id) {
+    public void add(ConnectionHandler<T> conH, Integer id) {
         allConnection.put(id, conH);
     }
 

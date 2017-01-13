@@ -5,6 +5,7 @@ import bgu.spl171.net.api.bidi.BidiMessagingProtocol;
 import bgu.spl171.net.srv.bidi.ConnectionHandler;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.SelectionKey;
@@ -20,7 +21,7 @@ public class NonBlockingConnectionHandler<T> implements ConnectionHandler<T> {
 
     private final BidiMessagingProtocol<T> protocol;
     private final MessageEncoderDecoder<T> encdec;
-    private final Queue<ByteBuffer> writeQueue = new LinkedList<>();
+    private final Queue<ByteBuffer> writeQueue = new ConcurrentLinkedQueue<>();
     private final SocketChannel chan;
     private final Reactor reactor;
 
@@ -36,13 +37,11 @@ public class NonBlockingConnectionHandler<T> implements ConnectionHandler<T> {
     }
 
     public Runnable continueRead() {
-        ByteBuffer buf = leaseBuffer();
+        ByteBuffer buf = leaseBuffer(); //create new buffer if the list is empty
 
         boolean success = false;
-        try {
-            success = chan.read(buf) != -1;
-        } catch (ClosedByInterruptException ex) {
-            Thread.currentThread().interrupt();
+        try { //try to read from the socket
+            success = chan.read(buf) != -1; //-1 connection error, if not there is someting to read
         } catch (IOException ex) {
             ex.printStackTrace();
         }
@@ -55,8 +54,13 @@ public class NonBlockingConnectionHandler<T> implements ConnectionHandler<T> {
                         T nextMessage = encdec.decodeNextByte(buf.get());
                         if (nextMessage != null) {
                             protocol.process(nextMessage);
+
+                            //@TODO: process should call this send
                         }
                     }
+
+                } catch (UnsupportedEncodingException e) { //utf8
+                    e.printStackTrace();
                 } finally {
                     releaseBuffer(buf);
                 }
@@ -81,14 +85,14 @@ public class NonBlockingConnectionHandler<T> implements ConnectionHandler<T> {
         return !chan.isOpen();
     }
 
-    public void continueWrite() {
+    public void continueWrite() { //write how much we can and if
         while (!writeQueue.isEmpty()) {
             try {
                 ByteBuffer top = writeQueue.peek();
                 chan.write(top);
                 if (top.hasRemaining()) {
                     return;
-                } else {
+                } else { //if the buffer is empty
                     writeQueue.remove();
                 }
             } catch (IOException ex) {
@@ -98,7 +102,8 @@ public class NonBlockingConnectionHandler<T> implements ConnectionHandler<T> {
         }
 
         if (writeQueue.isEmpty()) {
-            reactor.updateInterestedOps(chan, SelectionKey.OP_READ);
+            if (protocol.shouldTerminate()) close();
+            else reactor.updateInterestedOps(chan, SelectionKey.OP_READ);
         }
     }
 

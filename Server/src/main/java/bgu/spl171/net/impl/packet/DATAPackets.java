@@ -1,5 +1,8 @@
 package bgu.spl171.net.impl.packet;
 
+import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
+
 public class DATAPackets extends Packets {
     short packetSize;
     short block;
@@ -10,5 +13,16 @@ public class DATAPackets extends Packets {
         this.block = block;
         this.data = data;
         super.opCode = 3;
+    }
+
+
+    @Override
+    public byte[] toByteArr() {
+        ByteBuffer lengthBuffer = ByteBuffer.allocate(518);
+        lengthBuffer.put(shortToBytes(opCode));
+        lengthBuffer.put(shortToBytes(packetSize));
+        lengthBuffer.put(shortToBytes(block));
+        lengthBuffer.put(data);
+        return lengthBuffer.array();
     }
 }

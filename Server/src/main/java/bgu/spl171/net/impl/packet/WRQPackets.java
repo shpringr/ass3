@@ -1,15 +1,29 @@
 package bgu.spl171.net.impl.packet;
 
+import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
+
 public class WRQPackets extends Packets {
-    private String Filename;
+    private String fileName;
 
     public WRQPackets(String filename) {
-        Filename = filename;
+        fileName = filename;
         super.opCode = 2;
     }
 
-    public String getFilename() {
-        return Filename;
+    public String getFileName() {
+        return fileName;
+    }
+
+    public byte[] toByteArr() {
+        ByteBuffer lengthBuffer = ByteBuffer.allocate(518);
+        lengthBuffer.put(shortToBytes(opCode));
+        try {
+            lengthBuffer.put(fileName.getBytes("UTF-8"));
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+        return lengthBuffer.array();
     }
 
 }

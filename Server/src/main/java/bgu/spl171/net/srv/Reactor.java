@@ -107,7 +107,7 @@ public class Reactor<T> implements Server<T> {
     private void handleReadWrite(SelectionKey key) {
         NonBlockingConnectionHandler handler = (NonBlockingConnectionHandler) key.attachment();
         if (key.isReadable()) {
-            Runnable task = handler.continueRead();
+            Runnable task = handler.continueRead(); //the lamda run that we creat in nonblocking
             if (task != null) {
                 pool.submit(handler, task);
             }
