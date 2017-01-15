@@ -26,6 +26,7 @@ public class LOGRQPackets extends Packets{
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
+        lengthBuffer.put(shortToBytes((byte)0));
         return lengthBuffer.array();
     }
 }

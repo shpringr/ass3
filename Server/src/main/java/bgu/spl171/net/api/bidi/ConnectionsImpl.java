@@ -24,6 +24,10 @@ public class ConnectionsImpl<T> implements Connections<T> {
         }
     }
 
+    public ConcurrentHashMap<Integer, ConnectionHandler<T>> getAllConnection() {
+        return allConnection;
+    }
+
     public void broadcast(T msg) {
         allConnection.forEach( (k,v) -> v.send(msg) );
     }
@@ -36,5 +40,7 @@ public class ConnectionsImpl<T> implements Connections<T> {
     public void add(ConnectionHandler<T> conH, Integer id) {
         allConnection.put(id, conH);
     }
+
+
 
 }

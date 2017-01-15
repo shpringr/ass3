@@ -3,6 +3,9 @@ package bgu.spl171.net.api;
 import bgu.spl171.net.impl.packet.*;
 import com.sun.org.apache.xerces.internal.impl.io.UTF8Reader;
 
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 
@@ -191,10 +194,8 @@ public class MessageEncoderDecoderImpl<T> implements MessageEncoderDecoder<T> {
 
     //@TODO SHITTTTTTTTTTTTTTTTTTTTTTTTTTTT
     public byte[] encode(T message) {
-        //it is not eaxcacly like this.. it is shit
         return ((Packets)message).toByteArr();
     }
-
 
     //Decode 2 bytes to short
     public short bytesToShort(byte[] byteArr)

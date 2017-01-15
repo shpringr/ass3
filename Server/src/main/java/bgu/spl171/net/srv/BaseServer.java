@@ -38,6 +38,7 @@ public abstract class BaseServer<T> implements Server<T> {
             this.sock = serverSock; //just to be able to close
 
             while (!Thread.currentThread().isInterrupted()) {
+                //start
 
                 Socket clientSock = serverSock.accept();
 
