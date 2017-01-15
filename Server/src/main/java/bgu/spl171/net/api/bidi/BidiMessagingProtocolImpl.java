@@ -2,6 +2,7 @@ package bgu.spl171.net.api.bidi;
 
 import bgu.spl171.net.impl.packet.*;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,7 +13,8 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
     private Connections connections;
     private int connectionId;
     private static List<String> logOns = new ArrayList<>();
-
+    private static String state = "";
+    private static int block = 0;
 
     @Override
     public void start(int connectionId, Connections connections) {
@@ -44,16 +46,17 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
                 break;
             case 6:
 
-                ((DIRQPacket)message).toByteArr();
+                handleDirPacket((DIRQPacket) message);
                 break;
 
             case 7:
                 handleLoginPacket((LOGRQPackets) message);
                 break;
-            case 8:
 
-                ((DELRQPackets)message).getFilename();
+            case 8:
+                handleDelReqPacket((DELRQPackets) message);
                 break;
+
             case 9:
 
                 ((BCASTPackets)message).toByteArr();
@@ -63,6 +66,25 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
                 break;
         }
 
+    }
+
+    private void handleDirPacket(DIRQPacket message) {
+
+        File file = new File("");
+        File[] files = file.listFiles();
+
+        String filesList = "";
+        for (File f: files) {
+            filesList += f.getName() + '\0';
+        }
+
+        connections.send(connectionId,
+                new DATAPackets((short) connectionId, (short)filesList.length(), filesList.getBytes()));
+    }
+
+    private void handleDelReqPacket(DELRQPackets message) {
+        File file = new File(message.getFilename());
+        file.delete();
     }
 
     private void handleLoginPacket(LOGRQPackets message) {
