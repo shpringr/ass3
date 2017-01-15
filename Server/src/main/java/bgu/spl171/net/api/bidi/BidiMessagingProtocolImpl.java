@@ -1,8 +1,16 @@
 package bgu.spl171.net.api.bidi;
 
 import bgu.spl171.net.impl.packet.*;
+import bgu.spl171.net.srv.BlockingConnectionHandler;
+import bgu.spl171.net.srv.bidi.ConnectionHandler;
+import javafx.util.Pair;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.Vector;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,7 +35,36 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
     public void process(Packets message) {
         switch ((message.getOpCode())){
             case 1 :
-                ((RRQPackets)message).getFileName();
+                String fileName = ((RRQPackets)message).getFileName();
+                state = "reading";
+                short blockPacket=1;
+                if (file.listFiles()!=null){
+                    for ( File file : file.listFiles()) {
+                        if(fileName.equals(file.getName())){
+                            try {
+                                ConcurrentHashMap<byte[], Integer> dataBytes = getVectorOfBytesArr(file);
+                                while (state.equals("reading")){
+
+                                    for ( byte[] bytes: dataBytes.keySet()) {
+                                        short packetSize = dataBytes.get(bytes).shortValue();
+                                        DATAPackets dataToSend = new DATAPackets(packetSize, blockPacket, bytes);
+                                        connections.send(connectionId, dataToSend);
+                                        while (blockPacket>block)
+                                        {}
+                                        blockPacket++;
+                                    }
+                                }
+
+
+
+                            } catch (FileNotFoundException e) {
+                                e.printStackTrace();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                }
                 break;
             case 2 :
 
@@ -100,6 +137,20 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
             logOns.add(userName);
             connections.send(connectionId, new ACKPackets((short)0));
         }
+    }
+
+    private ConcurrentHashMap<byte[] , Integer > getVectorOfBytesArr(File file) throws IOException {
+        FileInputStream fileInputStream = new FileInputStream(file);
+        byte[] dataBytes = new byte[512];
+        ConcurrentHashMap<byte[] , Integer > mapOfByteArr = new ConcurrentHashMap<>();
+        int dvs = fileInputStream.read(dataBytes);
+        while (dvs ==512) {
+            mapOfByteArr.put(dataBytes, dvs);
+            dvs = fileInputStream.read(dataBytes);
+        }
+        mapOfByteArr.put(dataBytes, dvs);
+        ;
+        return mapOfByteArr;
     }
 
     @Override
