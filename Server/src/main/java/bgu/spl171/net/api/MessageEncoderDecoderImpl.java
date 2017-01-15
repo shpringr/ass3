@@ -39,7 +39,8 @@ public class MessageEncoderDecoderImpl<T> implements MessageEncoderDecoder<T> {
 
     @Override
     public T decodeNextByte(byte nextByte) throws UnsupportedEncodingException {
-        if (opCode==0){
+        if (opCode==0)
+        {
             opLengthBuffer.put(nextByte);
             if (!opLengthBuffer.hasRemaining()){
                 opLengthBuffer.flip();
