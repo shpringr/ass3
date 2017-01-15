@@ -1,8 +1,9 @@
 package bgu.spl171.net.api.bidi;
 
 import bgu.spl171.net.impl.packet.*;
-import bgu.spl171.net.srv.BlockingConnectionHandler;
-import bgu.spl171.net.srv.bidi.ConnectionHandler;
+
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets> {
@@ -10,6 +11,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
     private boolean shouldTerminate = false;
     private Connections connections;
     private int connectionId;
+    private static List<String> logOns = new ArrayList<>();
 
 
     @Override
@@ -46,8 +48,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
                 break;
 
             case 7:
-
-                ((LOGRQPackets)message).getUserName();
+                handleLoginPacket((LOGRQPackets) message);
                 break;
             case 8:
 
@@ -64,6 +65,19 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
                 break;
         }
 
+    }
+
+    private void handleLoginPacket(LOGRQPackets message) {
+        String userName = message.getUserName();
+        if (logOns.contains(userName))
+        {
+            connections.send(connectionId, new ERRORPackets((short)0, "fuck u u already exists"));
+        }
+        else
+        {
+            logOns.add(userName);
+            connections.send(connectionId, new ACKPackets((short)0));
+        }
     }
 
     @Override
