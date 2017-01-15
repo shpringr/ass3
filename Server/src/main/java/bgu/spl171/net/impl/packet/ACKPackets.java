@@ -10,6 +10,10 @@ public class ACKPackets extends Packets {
         super.opCode = 4;
     }
 
+    public short getBlock() {
+        return block;
+    }
+
     @Override
     public byte[] toByteArr() {
         ByteBuffer lengthBuffer = ByteBuffer.allocate(4);

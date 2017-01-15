@@ -1,16 +1,21 @@
 package bgu.spl171.net.api.bidi;
 
 import bgu.spl171.net.impl.packet.*;
-import bgu.spl171.net.srv.BlockingConnectionHandler;
-import bgu.spl171.net.srv.bidi.ConnectionHandler;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+
 
 public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets> {
 
     private boolean shouldTerminate = false;
     private Connections connections;
     private int connectionId;
+    private static List<String> logOns = new ArrayList<>();
+    private static String state = "";
+    private static int block = 0;
+
     File file = new File("Server/Files");
     @Override
     public void start(int connectionId, Connections connections) {
@@ -20,11 +25,8 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
 
     @Override
     public void process(Packets message) {
-        switch (message.getOpCode()){
-            //RRQ
+        switch ((message.getOpCode())){
             case 1 :
-                file.list()
-
                 ((RRQPackets)message).getFileName();
                 break;
             case 2 :
@@ -45,28 +47,59 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
                 break;
             case 6:
 
-                ((DIRQPacket)message).toByteArr();
+                handleDirPacket((DIRQPacket) message);
                 break;
 
             case 7:
-
-                ((LOGRQPackets)message).getUserName();
+                handleLoginPacket((LOGRQPackets) message);
                 break;
+
             case 8:
-
-                ((DELRQPackets)message).getFilename();
+                handleDelReqPacket((DELRQPackets) message);
                 break;
+
             case 9:
 
                 ((BCASTPackets)message).toByteArr();
                 break;
             case 10:
-
-                ((DISCPackets)message).toByteArr();
                 shouldTerminate = true;
                 break;
         }
 
+    }
+
+    private void handleDirPacket(DIRQPacket message) {
+
+        File file = new File("");
+        File[] files = file.listFiles();
+
+        String filesList = "";
+        for (File f: files) {
+            filesList += f.getName() + '\0';
+        }
+
+        connections.send(connectionId,
+                new DATAPackets((short) connectionId, (short)filesList.length(), filesList.getBytes()));
+    }
+
+    private void handleDelReqPacket(DELRQPackets message) {
+        File file = new File(message.getFilename());
+        file.delete();
+    }
+
+    private void handleLoginPacket(LOGRQPackets message) {
+        String userName = message.getUserName();
+        if (logOns.contains(userName))
+        {
+            connections.send(connectionId, new ERRORPackets((short) ERRORPackets.Errors.ALREADY_LOGGED_IN.ordinal(),
+                    ERRORPackets.Errors.ALREADY_LOGGED_IN.getErrorMsg()));
+        }
+        else
+        {
+            logOns.add(userName);
+            connections.send(connectionId, new ACKPackets((short)0));
+        }
     }
 
     @Override
