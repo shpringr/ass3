@@ -13,6 +13,13 @@ public class BCASTPackets extends Packets {
         super.opCode = 9;
     }
 
+    public byte getDeletedAdd() {
+        return deletedAdd;
+    }
+
+    public String getFileName() {
+        return fileName;
+    }
 
     @Override
     public byte[] toByteArr() {

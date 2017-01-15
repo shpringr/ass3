@@ -59,8 +59,6 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
                 ((BCASTPackets)message).toByteArr();
                 break;
             case 10:
-
-                ((DISCPackets)message).toByteArr();
                 shouldTerminate = true;
                 break;
         }
@@ -71,7 +69,8 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
         String userName = message.getUserName();
         if (logOns.contains(userName))
         {
-            connections.send(connectionId, new ERRORPackets((short)0, "fuck u u already exists"));
+            connections.send(connectionId, new ERRORPackets((short) ERRORPackets.Errors.ALREADY_LOGGED_IN.ordinal(),
+                    ERRORPackets.Errors.ALREADY_LOGGED_IN.getErrorMsg()));
         }
         else
         {

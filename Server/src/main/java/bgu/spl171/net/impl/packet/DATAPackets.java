@@ -15,6 +15,17 @@ public class DATAPackets extends Packets {
         super.opCode = 3;
     }
 
+    public short getPacketSize() {
+        return packetSize;
+    }
+
+    public short getBlock() {
+        return block;
+    }
+
+    public byte[] getData() {
+        return data;
+    }
 
     @Override
     public byte[] toByteArr() {
