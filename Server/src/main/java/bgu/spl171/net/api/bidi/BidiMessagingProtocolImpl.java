@@ -4,24 +4,27 @@ import bgu.spl171.net.impl.packet.Packets;
 import bgu.spl171.net.srv.BlockingConnectionHandler;
 import bgu.spl171.net.srv.bidi.ConnectionHandler;
 
+import java.io.File;
 
-public class BidiMessagingProtocolImpl<T> implements BidiMessagingProtocol<T> {
+
+public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets> {
 
     private boolean shouldTerminate = false;
-    private Connections<T> connections;
+    private Connections connections;
     private int connectionId;
-
+    File file = new File("Server/Files");
     @Override
-    public void start(int connectionId, Connections<T> connections) {
+    public void start(int connectionId, Connections connections) {
         this.connections = connections;
         this.connectionId = connectionId;
     }
 
     @Override
-    public void process(T message) {
-        switch ((((Packets)message).getOpCode())){
+    public void process(Packets message) {
+        switch (message.getOpCode()){
             //RRQ
             case 1 :
+                file.list()
 
                 break;
             case 2 :
