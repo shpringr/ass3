@@ -18,14 +18,14 @@ public class DELRQPacket extends Packet {
 
     @Override
     public byte[] toByteArr() {
-        ByteBuffer lengthBuffer = ByteBuffer.allocate(518);
+        ByteBuffer lengthBuffer = ByteBuffer.allocate(2+getFilename().length()+1);
         lengthBuffer.put(shortToBytes(opCode));
         try {
             lengthBuffer.put(fileName.getBytes("UTF-8"));
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
-        lengthBuffer.put(shortToBytes((byte)0));
+        lengthBuffer.put((byte)0);
         return lengthBuffer.array();
     }
 }

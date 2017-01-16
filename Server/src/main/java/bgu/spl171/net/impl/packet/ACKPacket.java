@@ -16,7 +16,7 @@ public class ACKPacket extends Packet {
 
     @Override
     public byte[] toByteArr() {
-        ByteBuffer lengthBuffer = ByteBuffer.allocate(4);
+        ByteBuffer lengthBuffer = ByteBuffer.allocate(2+2);
         lengthBuffer.put(shortToBytes(opCode));
         lengthBuffer.put(shortToBytes(block));
         return lengthBuffer.array();

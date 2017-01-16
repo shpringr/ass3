@@ -20,8 +20,6 @@ public class MessageEncoderDecoderImpl implements MessageEncoderDecoder<Packet> 
     private byte [] errorArr;
 
     private short opCode;
-    private byte[] objectBytes;
-    private byte[] opObjectBytes;
 
     private byte [] packetSizeArr;
     private short packetSize;
@@ -36,8 +34,7 @@ public class MessageEncoderDecoderImpl implements MessageEncoderDecoder<Packet> 
     }
 
     private void initAll() {
-        if (opLengthBuffer!= null)
-            opLengthBuffer.clear();
+        initOpObjects();
         if (lengthBuffer!= null)
             lengthBuffer.clear();
         if (blockBuffer != null)
@@ -48,9 +45,6 @@ public class MessageEncoderDecoderImpl implements MessageEncoderDecoder<Packet> 
             errorBuffer.clear();
         errorCode =-1;
         errorArr = null;
-        opCode=0;
-        objectBytes = null;
-        opObjectBytes = null;
         packetSizeArr = null;
         packetSize =0;
         blockArr = null;
@@ -58,10 +52,15 @@ public class MessageEncoderDecoderImpl implements MessageEncoderDecoder<Packet> 
         deletedAdd = 'e';
     }
 
+    private void initOpObjects() {
+        if (opLengthBuffer!= null)
+            opLengthBuffer.clear();
+        opCode=0;
+    }
+
     @Override
     public Packet decodeNextByte(byte nextByte) throws UnsupportedEncodingException {
-        switch (opCode)
-        {
+        switch (opCode) {
             case 0:
                 initOpCodeAndBuffers(nextByte);
                 break;
@@ -87,7 +86,6 @@ public class MessageEncoderDecoderImpl implements MessageEncoderDecoder<Packet> 
                 break;
 
             case 6:
-                makeDIRQPacket();
                 break;
 
             case 7:
@@ -103,15 +101,11 @@ public class MessageEncoderDecoderImpl implements MessageEncoderDecoder<Packet> 
                 break;
 
             case 10:
-                makeDiscPacket();
+                break;
+
         }
 
         return res;
-    }
-
-    private void makeDiscPacket() {
-        res = new DISCPacket();
-        initAll();
     }
 
     private void makeBCastPacket(byte nextByte) throws UnsupportedEncodingException {
@@ -122,9 +116,7 @@ public class MessageEncoderDecoderImpl implements MessageEncoderDecoder<Packet> 
             if (nextByte != '\0')
                 lengthBuffer.put(nextByte);
             else { //nextByte == '\0'
-                lengthBuffer.flip();
-                objectBytes = lengthBuffer.array();
-                String fileName = new String(objectBytes, "UTF-8");
+                String fileName = new String(getDataFromBuffer(lengthBuffer), "UTF-8");
                 res = new BCASTPacket(deletedAdd, fileName);
                 initAll();
             }
@@ -135,9 +127,7 @@ public class MessageEncoderDecoderImpl implements MessageEncoderDecoder<Packet> 
         if (nextByte != '\0')
             lengthBuffer.put(nextByte);
         else { //nextByte == '\0'
-            lengthBuffer.flip();
-            objectBytes = lengthBuffer.array();
-            String fileName = new String(objectBytes, "UTF-8");
+            String fileName = new String(getDataFromBuffer(lengthBuffer), "UTF-8");
             res = new DELRQPacket(fileName);
             initAll();
         }
@@ -147,12 +137,17 @@ public class MessageEncoderDecoderImpl implements MessageEncoderDecoder<Packet> 
         if (nextByte != '\0')
             lengthBuffer.put(nextByte);
         else { //nextByte == '\0'
-            lengthBuffer.flip();
-            objectBytes = lengthBuffer.array();
-            String userName = new String(objectBytes, "UTF-8");
+            String userName = new String(getDataFromBuffer(lengthBuffer), "UTF-8");
             res = new LOGRQPacket(userName);
             initAll();
         }
+    }
+
+    private byte[] getDataFromBuffer(ByteBuffer buffer) {
+        buffer.flip();
+        byte[] objectBytes = new byte[buffer.limit()];
+        buffer.get(objectBytes,0, buffer.limit());
+        return objectBytes;
     }
 
     private void makeDIRQPacket() {
@@ -164,17 +159,14 @@ public class MessageEncoderDecoderImpl implements MessageEncoderDecoder<Packet> 
         if (errorArr == null) {
             errorBuffer.put(nextByte);
             if (!errorBuffer.hasRemaining()) {
-                errorBuffer.flip();
-                errorArr = errorBuffer.array();
+                errorArr = getDataFromBuffer(errorBuffer);
                 errorCode = bytesToShort(errorArr);
             }
         } else {
             if (nextByte != '\0')
                 lengthBuffer.put(nextByte);
             else { //nextByte == '\0'
-                lengthBuffer.flip();
-                objectBytes = lengthBuffer.array();
-                String errMsg = new String(objectBytes, "UTF-8");
+                String errMsg = new String(getDataFromBuffer(lengthBuffer), "UTF-8");
                 res = new ERRORPacket(errorCode, errMsg);
                 initAll();
             }
@@ -182,12 +174,9 @@ public class MessageEncoderDecoderImpl implements MessageEncoderDecoder<Packet> 
     }
 
     private void makeACKPacket(byte nextByte) {
-        if (lengthBuffer.hasRemaining()) {
-            lengthBuffer.put(nextByte);
-        } else {
-            lengthBuffer.flip();
-            byte[] blockArrAck = lengthBuffer.array();
-            short blockAck = bytesToShort(blockArrAck);
+        lengthBuffer.put(nextByte);
+        if (!lengthBuffer.hasRemaining()) {
+            short blockAck = bytesToShort(getDataFromBuffer(lengthBuffer));
             res = new ACKPacket(blockAck);
             initAll();
         }
@@ -197,25 +186,21 @@ public class MessageEncoderDecoderImpl implements MessageEncoderDecoder<Packet> 
         if (packetSizeArr == null) {
             packetSizeBuffer.put(nextByte);
             if (!packetSizeBuffer.hasRemaining()) {
-                lengthBuffer.flip();
-                packetSizeArr = packetSizeBuffer.array();
+                packetSizeArr = getDataFromBuffer(packetSizeBuffer);
                 packetSize = bytesToShort(packetSizeArr);
             }
         } else if (blockArr == null) {
             blockBuffer.put(nextByte);
             if (!blockBuffer.hasRemaining()) {
-                lengthBuffer.flip();
-                blockArr = blockBuffer.array();
+                blockArr = getDataFromBuffer(blockBuffer);
                 block = bytesToShort(blockArr);
             }
         } else {
-            if (packetSize != 0) {
-                lengthBuffer.put(nextByte);
-                packetSize--;
-            } else {
-                lengthBuffer.flip();
-                byte[] data = lengthBuffer.array();
-                res = new DATAPacket(packetSize, block, data);
+            lengthBuffer.put(nextByte);
+            packetSize--;
+            if (packetSize == 0) {
+                byte[] bytes = getDataFromBuffer(lengthBuffer);
+                res = new DATAPacket((short) bytes.length, block, bytes);
                 initAll();
             }
         }
@@ -225,9 +210,7 @@ public class MessageEncoderDecoderImpl implements MessageEncoderDecoder<Packet> 
         if (nextByte != '\0')
             lengthBuffer.put(nextByte);
         else { //nextByte == '\0'
-            lengthBuffer.flip();
-            objectBytes = lengthBuffer.array();
-            String filename = new String(objectBytes, "UTF-8");
+            String filename = new String(getDataFromBuffer(lengthBuffer), "UTF-8");
             res = new WRQPacket(filename);
             initAll();
         }
@@ -237,9 +220,7 @@ public class MessageEncoderDecoderImpl implements MessageEncoderDecoder<Packet> 
         if (nextByte != '\0')
             lengthBuffer.put(nextByte);
         else { //nextByte == '\0'
-            lengthBuffer.flip();
-            objectBytes = lengthBuffer.array();
-            String filename = new String(objectBytes, "UTF-8");
+            String filename = new String(getDataFromBuffer(lengthBuffer), "UTF-8");
             res = new RRQPacket(filename);
             initAll();
         }
@@ -248,21 +229,30 @@ public class MessageEncoderDecoderImpl implements MessageEncoderDecoder<Packet> 
     private void initOpCodeAndBuffers(byte nextByte) {
         opLengthBuffer.put(nextByte);
         if (!opLengthBuffer.hasRemaining()){
-            opLengthBuffer.flip();
-            opObjectBytes = opLengthBuffer.array();
-            opCode = bytesToShort(opObjectBytes);
+            opCode = bytesToShort(getDataFromBuffer(opLengthBuffer));
             switch (opCode){
-                case 1 : case 2 :  case 7: case 8: case 9: lengthBuffer = ByteBuffer.allocate(516);
+                case 1 : case 2 : case 7: case 8: case 9: lengthBuffer = ByteBuffer.allocate(516);
                     break;
                 case 3:
                     packetSizeBuffer = ByteBuffer.allocate(2);
                     blockBuffer = ByteBuffer.allocate(2);
-                    lengthBuffer = ByteBuffer.allocate(514);
+                    lengthBuffer = ByteBuffer.allocate(512);
+                    break;
                 case 4: lengthBuffer = ByteBuffer.allocate(2);
                     break;
                 case 5:
                     errorBuffer = ByteBuffer.allocate(2);
                     lengthBuffer = ByteBuffer.allocate(516);
+                    break;
+                case 6:
+                    res = new DIRQPacket();
+                    initOpObjects();
+                    break;
+
+                case 10:
+                    res = new DISCPacket();
+                    initOpObjects();
+                    break;
             }
         }
     }
@@ -290,27 +280,3 @@ public class MessageEncoderDecoderImpl implements MessageEncoderDecoder<Packet> 
     }
 
 }
-
-
-/*
-        if (objectBytes == null) { //indicates that we are still reading the length
-            lengthBuffer.put(nextByte);
-            if (!lengthBuffer.hasRemaining()) { //we read 4 bytes and therefore can take the length
-                lengthBuffer.flip();
-                objectBytes = new byte[lengthBuffer.getInt()];
-                objectBytesIndex = 0;
-                lengthBuffer.clear();
-            }
-        } else {
-            objectBytes[objectBytesIndex] = nextByte;
-            if (++objectBytesIndex == objectBytes.length) {
-                opObjectBytes = new byte[2];
-                opObjectBytes[0] = objectBytes[0];
-                opObjectBytes[1] = objectBytes[1];
-                opCode = bytesToShort(opObjectBytes);
-            }
-                  }
-
-                }
-
-*/

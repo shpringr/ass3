@@ -45,7 +45,7 @@ public class ERRORPacket extends Packet {
 
     @Override
     public byte[] toByteArr() {
-        ByteBuffer lengthBuffer = ByteBuffer.allocate(518);
+        ByteBuffer lengthBuffer = ByteBuffer.allocate(2+2+getErrMsg().length()+1);
         lengthBuffer.put(shortToBytes(opCode));
         lengthBuffer.put(shortToBytes(errorCode));
         try {
@@ -53,7 +53,7 @@ public class ERRORPacket extends Packet {
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
-        lengthBuffer.put(shortToBytes((byte)0));
+        lengthBuffer.put((byte)0);
         return lengthBuffer.array();
     }
 }
