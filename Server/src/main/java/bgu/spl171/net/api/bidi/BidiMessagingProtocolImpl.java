@@ -20,7 +20,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
     private int connectionId;
     private File file = new File("Server/Files");
 
-    private static List<String> logOns = new ArrayList<>();
+    private static List<Integer> logOns = new ArrayList<>();
     private static String state = "";
     private static int block = 0;
     private static boolean isFirstCommand = true;
@@ -35,48 +35,51 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
     @Override
     public void process(Packets message) {
 
-        checkIfLoggedIn(message);
+        if (isLegalFirstCommand(message)) {
+            switch ((message.getOpCode())) {
+                case 1:
+                    handleReadPacket((RRQPackets) message);
+                    break;
 
-        switch ((message.getOpCode())){
-            case 1 :
-                handleReadPacket((RRQPackets) message);
-                break;
+                case 2:
+                    handleWritePacket((WRQPackets) message);
+                    break;
 
-            case 2 :
-                handleWritePacket((WRQPackets) message);
-                break;
+                case 3:
+                    handleDataPacket((DATAPackets) message);
+                    break;
 
-            case 3:
-                handleDataPacket((DATAPackets) message);
-                break;
+                case 4:
+                    handleAckPacket((ACKPackets) message);
+                    break;
 
-            case 4:
-                handleAckPacket((ACKPackets) message);
-                break;
+                case 5:
+                    handleErrorPacket((ERRORPackets) message);
+                    break;
 
-            case 5:
-                handleErrorPacket((ERRORPackets) message);
-                break;
+                case 6:
+                    handleDirqPacket();
+                    break;
 
-            case 6:
-                handleDirPacket((DIRQPacket) message);
-                break;
+                case 7:
+                    handleLoginPacket((LOGRQPackets) message);
+                    break;
 
-            case 7:
-                handleLoginPacket((LOGRQPackets) message);
-                break;
+                case 8:
+                    handleDelReqPacket((DELRQPackets) message);
+                    break;
 
-            case 8:
-                handleDelReqPacket((DELRQPackets) message);
-                break;
+                case 9:
+                    handleBCastPacket((BCASTPackets) message);
+                    break;
 
-            case 9:
-                handleBCastPacket((BCASTPackets) message);
-                break;
-
-            case 10:
-                handleDiscPacket((DISCPackets)message);
-                break;
+                case 10:
+                    handleDiscPacket((DISCPackets) message);
+                    break;
+                default:
+                    sendError(ERRORPackets.Errors.ILLEGAL_TFTP_OPERATION);
+                    break;
+            }
         }
     }
 
@@ -90,7 +93,9 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
     }
 
     private void handleBCastPacket(BCASTPackets message) {
-        message.toByteArr();
+        for (Integer conID :logOns) {
+            connections.send(conID, new BCASTPackets(message.getDeletedAdd(), message.getFileName()));
+        }
     }
 
     private void handleErrorPacket(ERRORPackets message) {
@@ -142,19 +147,22 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
         }
     }
 
-    private void checkIfLoggedIn(Packets message) {
+    private boolean isLegalFirstCommand(Packets message) {
         if (isFirstCommand) {
             isFirstCommand = false;
 
             if (message.getOpCode() != 7) {
-                connections.send(connectionId, new ERRORPackets((short) ERRORPackets.Errors.NOT_LOGGED_IN.ordinal(),
-                        ERRORPackets.Errors.NOT_LOGGED_IN.getErrorMsg()));
+                sendError(ERRORPackets.Errors.NOT_LOGGED_IN);
+                return false;
             }
-
         }
+
+        return true;
     }
 
-    private void handleDirPacket(DIRQPacket message) {
+    //TODO: make sure it doesnt return file that are uploading.
+    //TODO: what happens if the list is more than 512b?
+    private void handleDirqPacket() {
 
         File[] files = file.listFiles();
 
@@ -169,18 +177,32 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
 
     private void handleDelReqPacket(DELRQPackets message) {
         File file = new File(message.getFilename());
-        file.delete();
+        try {
+            if (file.delete()) {
+                connections.send(connectionId, new ACKPackets(ACK_OK));
+                connections.send(connectionId, new BCASTPackets((byte) 0, message.getFilename()));
+            }
+            else
+                sendError(ERRORPackets.Errors.FILE_NOT_FOUND);
+        } catch (SecurityException e) {
+            sendError(ERRORPackets.Errors.ACCESS_VIOLATION);
+        }
+    }
+
+    private void sendError(ERRORPackets.Errors errorCode) {
+        connections.send(connectionId ,
+                new ERRORPackets((short) errorCode.ordinal(), errorCode.getErrorMsg()));
     }
 
     private void handleLoginPacket(LOGRQPackets message) {
         String userName = message.getUserName();
 
         if (logOns.contains(userName)) {
-            connections.send(connectionId, new ERRORPackets((short) ERRORPackets.Errors.ALREADY_LOGGED_IN.ordinal(),
-                    ERRORPackets.Errors.ALREADY_LOGGED_IN.getErrorMsg()));
-        } else {
-            logOns.add(userName);
-            connections.send(connectionId, new ACKPackets((short) 0));
+            sendError(ERRORPackets.Errors.ALREADY_LOGGED_IN);
+        } else
+            {
+            logOns.add(connectionId);
+            connections.send(connectionId, new ACKPackets(ACK_OK));
         }
     }
 
