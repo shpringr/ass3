@@ -16,8 +16,7 @@ public class ERRORPacket extends Packet {
         ILLEGAL_TFTP_OPERATION("Illegal TFTP operation – Unknown Opcode."),
         FILE_ALREADY_EXISTS("File already exists – File name exists on WRQ."),
         NOT_LOGGED_IN("User not logged in – Any opcode received before Login completes."),
-        ALREADY_LOGGED_IN("User already logged in – Login username already connected."),
-        FILE_CANT_BE_READ("File can't be read from the server.");
+        ALREADY_LOGGED_IN("User already logged in – Login username already connected.");
 
         private String errorMsg;
 

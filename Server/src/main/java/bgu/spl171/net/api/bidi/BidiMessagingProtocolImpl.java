@@ -1,13 +1,14 @@
 package bgu.spl171.net.api.bidi;
 
 import bgu.spl171.net.impl.packet.*;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+
+import java.io.*;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
+
+import static bgu.spl171.net.impl.packet.ERRORPackets.Errors.*;
 
 
 public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> {
@@ -25,6 +26,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
     private static boolean isFirstCommand = true;
     private LinkedBlockingQueue<DATAPacket> dataQueue = new LinkedBlockingQueue<>();
     private static String state = "";
+    File fileToWrite =null;
 
 
 
@@ -116,31 +118,51 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
                     dataQueue.clear();
                 }
             }
-            if (state.equals("writing")) {
-
-            }
         }
     }
 
-    private void handleDataPacket(DATAPacket message) {
-        message.toByteArr();
-    }
-
-    private void handleWritePacket(WRQPacket message) {
-        String fileName = message.getFileName();
-        boolean fileExciste = false;
-        if (file.listFiles()!=null){
-            for ( File file : file.listFiles()) {
-                if(fileName.equals(file.getName())){
-                    fileExciste = true;
+    private void handleDataPacket(DATAPackets message) {
+        if (state.equals("writing")){
+            try {
+                FileOutputStream fileOutputStream = new FileOutputStream(fileToWrite);
+                if (message.getPacketSize() == 512){
+                    fileOutputStream.write(message.getData());
+                    connections.send(connectionId, new ACKPackets(message.getBlock()));
                 }
+                else{
+                    fileOutputStream.write(message.getData());
+                    fileOutputStream.close();
+                    connections.send(connectionId, new ACKPackets(message.getBlock()));
+                    connections.broadcast(new BCASTPackets((byte) 1, fileToWrite.getName()));
+                    state="";
+                }
+            } catch (FileNotFoundException e) {
+                sendError(NOT_DEFINED,e.getMessage());
+            } catch (IOException e) {
+                sendError(NOT_DEFINED,e.getMessage());
             }
         }
-        else {
-            //TODO throw error
-        }
-        if (!fileExciste){
-            
+    }
+
+    private void handleWritePacket(WRQPackets message) {
+        String fileNameToWrite = message.getFileName();
+
+        // create new file
+        fileToWrite = new File(file.getPath() + "/" + fileNameToWrite);
+        // tries to create new file in the system
+        boolean createFile = false;
+        try {
+            createFile = fileToWrite.createNewFile();
+            if (createFile){
+                connections.send(connectionId, new ACKPackets((short)0));
+                state = "writing";
+            }
+            else {
+                //TODO ???
+                sendError(NOT_DEFINED,"FILE_ALREADY_EXISTS");
+            }
+        } catch (IOException e) {
+            sendError(NOT_DEFINED,e.getMessage());
         }
 
     }
@@ -152,23 +174,23 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
                 if(fileName.equals(file.getName())){
                     state = "reading";
                     try {
-                        getDataQueue(file);
+                        readFileIntoDataQueue(file);
                         //send the first packet
                         DATAPacket dataToSend = dataQueue.poll();
                         if (dataToSend!=null){
                             connections.send(connectionId, dataToSend );
                         }
                     } catch (IOException e) {
-                        sendError(ERRORPacket.Errors.FILE_CANT_BE_READ, "");
+                        sendError(NOT_DEFINED,e.getMessage());
                     }
                 }
                 else{
-                    sendError(ERRORPacket.Errors.FILE_NOT_FOUND, "");
+                    sendError(ERRORPackets.Errors.FILE_NOT_FOUND,"");
                 }
             }
         }
         else{
-            sendError(ERRORPacket.Errors.FILE_NOT_FOUND, "");
+            sendError(NOT_DEFINED,"THERE_IS_NO_FILES_IN_THE_SERVER");
         }
     }
 
@@ -239,7 +261,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
         }
     }
 
-    private void getDataQueue(File file) throws IOException {
+    private void readFileIntoDataQueue(File file) throws IOException {
         short blockPacket=1;
         FileInputStream fileInputStream = new FileInputStream(file);
         byte[] dataBytes = new byte[512];
