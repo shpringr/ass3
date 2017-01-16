@@ -2,7 +2,6 @@ package bgu.spl171.net.srv;
 
 import bgu.spl171.net.api.MessageEncoderDecoderImpl;
 import bgu.spl171.net.api.bidi.BidiMessagingProtocolImpl;
-import bgu.spl171.net.impl.newsfeed.NewsFeed;
 
 /**
  * Created by Orel Hazan on 17/01/2017.
