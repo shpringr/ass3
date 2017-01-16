@@ -17,7 +17,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
 
     private boolean shouldTerminate = false;
     private Connections connections;
-    private int connectionId;
+    private Integer connectionId;
     private File file = new File("Server/Files");
 
     private static List<Integer> logOns = new ArrayList<>();
@@ -56,7 +56,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
                     break;
 
                 case 5:
-                    handleErrorPacket((ERRORPackets) message);
+                    handleErrorPacket();
                     break;
 
                 case 6:
@@ -72,34 +72,39 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
                     break;
 
                 case 9:
-                    handleBCastPacket((BCASTPackets) message);
+                    handleBCastPacket();
                     break;
 
                 case 10:
-                    handleDiscPacket((DISCPackets) message);
+                    handleDiscPacket();
                     break;
                 default:
-                    sendError(ERRORPackets.Errors.ILLEGAL_TFTP_OPERATION);
+                    sendError(ERRORPackets.Errors.ILLEGAL_TFTP_OPERATION, "");
                     break;
             }
         }
     }
 
-    private void handleDiscPacket(DISCPackets message) {
+    private void handleDiscPacket() {
+
         try {
             connections.disconnect(connectionId);
+            logOns.remove(connectionId);
+            connections.send(connectionId, new ACKPackets((short)0));
             shouldTerminate = true;
         } catch (IOException e) {
-            e.printStackTrace();
+            sendError(ERRORPackets.Errors.NOT_DEFINED, e.getMessage());
         }
-    }
-
-    private void handleBCastPacket(BCASTPackets message) {
 
     }
 
-    private void handleErrorPacket(ERRORPackets message) {
-        message.toByteArr();
+    private void handleBCastPacket() {
+        sendError(ERRORPackets.Errors.NOT_DEFINED, "");
+    }
+
+    //TODO: can we get errors from client to server?
+    private void handleErrorPacket() {
+        sendError(ERRORPackets.Errors.NOT_DEFINED, "");
     }
 
     private void handleAckPacket(ACKPackets message) {
@@ -174,7 +179,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
             isFirstCommand = false;
 
             if (message.getOpCode() != 7) {
-                sendError(ERRORPackets.Errors.NOT_LOGGED_IN);
+                sendError(ERRORPackets.Errors.NOT_LOGGED_IN, "");
                 return false;
             }
         }
@@ -194,7 +199,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
         }
 
         connections.send(connectionId,
-                new DATAPackets((short) connectionId, (short)filesList.length(), filesList.getBytes()));
+                new DATAPackets(connectionId.shortValue(), (short)filesList.length(), filesList.getBytes()));
     }
 
     private void handleDelReqPacket(DELRQPackets message) {
@@ -205,9 +210,9 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
                 broadcastMessage((byte) 0, message.getFilename());
             }
             else
-                sendError(ERRORPackets.Errors.FILE_NOT_FOUND);
+                sendError(ERRORPackets.Errors.FILE_NOT_FOUND, "");
         } catch (SecurityException e) {
-            sendError(ERRORPackets.Errors.ACCESS_VIOLATION);
+            sendError(ERRORPackets.Errors.ACCESS_VIOLATION, "");
         }
     }
 
@@ -219,16 +224,16 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
         }
     }
 
-    private void sendError(ERRORPackets.Errors errorCode) {
+    private void sendError(ERRORPackets.Errors errorCode, String extraMsg) {
         connections.send(connectionId ,
-                new ERRORPackets((short) errorCode.ordinal(), errorCode.getErrorMsg()));
+                new ERRORPackets((short) errorCode.ordinal(), errorCode.getErrorMsg() + extraMsg));
     }
 
     private void handleLoginPacket(LOGRQPackets message) {
         String userName = message.getUserName();
 
         if (logOns.contains(userName)) {
-            sendError(ERRORPackets.Errors.ALREADY_LOGGED_IN);
+            sendError(ERRORPackets.Errors.ALREADY_LOGGED_IN, "");
         } else
             {
             logOns.add(connectionId);
