@@ -3,10 +3,8 @@ package bgu.spl171.net.api.bidi;
 import bgu.spl171.net.impl.packet.*;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -188,12 +186,20 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
         try {
             if (file.delete()) {
                 connections.send(connectionId, new ACKPackets(ACK_OK));
-                connections.send(connectionId, new BCASTPackets((byte) 0, message.getFilename()));
+                broadcastMessage((byte) 0, message.getFilename());
             }
             else
                 sendError(ERRORPackets.Errors.FILE_NOT_FOUND);
         } catch (SecurityException e) {
             sendError(ERRORPackets.Errors.ACCESS_VIOLATION);
+        }
+    }
+
+    private void broadcastMessage(byte delOrIns, String filename) {
+
+        for (Integer conId : logOns)
+        {
+            connections.send(connectionId, new BCASTPackets(delOrIns, filename));
         }
     }
 
