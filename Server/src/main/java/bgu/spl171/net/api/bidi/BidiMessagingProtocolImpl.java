@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import static bgu.spl171.net.impl.packet.ERRORPackets.Errors.*;
+import static bgu.spl171.net.impl.packet.ERRORPacket.Errors.*;
 
 
 public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> {
@@ -121,19 +121,19 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
         }
     }
 
-    private void handleDataPacket(DATAPackets message) {
+    private void handleDataPacket(DATAPacket message) {
         if (state.equals("writing")){
             try {
                 FileOutputStream fileOutputStream = new FileOutputStream(fileToWrite);
                 if (message.getPacketSize() == 512){
                     fileOutputStream.write(message.getData());
-                    connections.send(connectionId, new ACKPackets(message.getBlock()));
+                    connections.send(connectionId, new ACKPacket(message.getBlock()));
                 }
                 else{
                     fileOutputStream.write(message.getData());
                     fileOutputStream.close();
-                    connections.send(connectionId, new ACKPackets(message.getBlock()));
-                    connections.broadcast(new BCASTPackets((byte) 1, fileToWrite.getName()));
+                    connections.send(connectionId, new ACKPacket(message.getBlock()));
+                    connections.broadcast(new BCASTPacket((byte) 1, fileToWrite.getName()));
                     state="";
                 }
             } catch (FileNotFoundException e) {
@@ -144,7 +144,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
         }
     }
 
-    private void handleWritePacket(WRQPackets message) {
+    private void handleWritePacket(WRQPacket message) {
         String fileNameToWrite = message.getFileName();
 
         // create new file
@@ -154,7 +154,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
         try {
             createFile = fileToWrite.createNewFile();
             if (createFile){
-                connections.send(connectionId, new ACKPackets((short)0));
+                connections.send(connectionId, new ACKPacket((short)0));
                 state = "writing";
             }
             else {
@@ -185,7 +185,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
                     }
                 }
                 else{
-                    sendError(ERRORPackets.Errors.FILE_NOT_FOUND,"");
+                    sendError(ERRORPacket.Errors.FILE_NOT_FOUND,"");
                 }
             }
         }
