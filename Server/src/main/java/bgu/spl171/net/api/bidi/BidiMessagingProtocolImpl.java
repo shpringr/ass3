@@ -5,9 +5,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.LinkedBlockingQueue;
 
 
 public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets> {
@@ -21,10 +23,12 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
     private File file = new File("Server/Files");
 
     private static List<String> logOns = new ArrayList<>();
-    private static String state = "";
     private static int block = 0;
     private static boolean isFirstCommand = true;
-    private static ConcurrentHashMap<byte[], Integer> dataBytes;
+    private LinkedBlockingQueue<DATAPackets> dataQueue = new LinkedBlockingQueue<>();
+    private static String state = "";
+
+
 
     @Override
     public void start(int connectionId, Connections connections) {
@@ -98,7 +102,20 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
     }
 
     private void handleAckPacket(ACKPackets message) {
-        block = message.getBlock();
+        if (message.getBlock()!=0) {
+            if (state.equals("reading")) {
+                DATAPackets dataToSend = dataQueue.poll();
+                if (dataToSend != null) {
+                    connections.send(connectionId, dataToSend);
+                } else {
+                    state = "";
+                    dataQueue.clear();
+                }
+            }
+            if (state.equals("writing")) {
+
+            }
+        }
     }
 
     private void handleDataPacket(DATAPackets message) {
@@ -111,32 +128,25 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
 
     private void handleReadPacket(RRQPackets message) {
         String fileName = message.getFileName();
-        state = "reading";
-        short blockPacket=1;
         if (file.listFiles()!=null){
             for ( File file : file.listFiles()) {
                 if(fileName.equals(file.getName())){
+                    state = "reading";
                     try {
-                        dataBytes = getVectorOfBytesArr(file);
-                        while (state.equals("reading")){
-
-                            for ( byte[] bytes: dataBytes.keySet()) {
-                                short packetSize = dataBytes.get(bytes).shortValue();
-                                DATAPackets dataToSend = new DATAPackets(packetSize, blockPacket, bytes);
-                                connections.send(connectionId, dataToSend);
-                                while (blockPacket>block)
-                                {}
-                                blockPacket++;
-                            }
+                        getDataQueue(file);
+                        //send the first packet
+                        DATAPackets dataToSend = dataQueue.poll();
+                        if (dataToSend!=null){
+                            connections.send(connectionId, dataToSend );
                         }
-
-
-
-                    } catch (FileNotFoundException e) {
-                        e.printStackTrace();
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        connections.send(connectionId, new ERRORPackets((short) ERRORPackets.Errors.FILE_CANT_BE_READ.ordinal(),
+                                ERRORPackets.Errors.FILE_CANT_BE_READ.getErrorMsg()));
                     }
+                }
+                else{
+                    connections.send(connectionId, new ERRORPackets((short) ERRORPackets.Errors.FILE_NOT_FOUND.ordinal(),
+                            ERRORPackets.Errors.FILE_NOT_FOUND.getErrorMsg()));
                 }
             }
         }
@@ -184,18 +194,27 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
         }
     }
 
-    private ConcurrentHashMap<byte[] , Integer > getVectorOfBytesArr(File file) throws IOException {
+    private void getDataQueue(File file) throws IOException {
+        short blockPacket=1;
         FileInputStream fileInputStream = new FileInputStream(file);
         byte[] dataBytes = new byte[512];
-        ConcurrentHashMap<byte[] , Integer > mapOfByteArr = new ConcurrentHashMap<>();
-        int dvs = fileInputStream.read(dataBytes);
-        while (dvs ==512) {
-            mapOfByteArr.put(dataBytes, dvs);
-            dvs = fileInputStream.read(dataBytes);
+        short packetSize =  (short)fileInputStream.read(dataBytes);
+        while (packetSize ==512) {
+            DATAPackets dataToSend = new DATAPackets(packetSize, blockPacket, dataBytes);
+            dataQueue.add(dataToSend);
+            blockPacket++;
+            packetSize = (short)fileInputStream.read(dataBytes);
         }
-        mapOfByteArr.put(dataBytes, dvs);
-        ;
-        return mapOfByteArr;
+        if (packetSize==512){
+            byte[] lastDataBytes = new byte[0];
+            DATAPackets dataToSend = new DATAPackets((short)0, blockPacket, lastDataBytes );
+            dataQueue.add(dataToSend);
+        }
+        else {
+            dataBytes = Arrays.copyOf(dataBytes, packetSize);
+            DATAPackets dataToSend = new DATAPackets(packetSize, blockPacket, dataBytes);
+            dataQueue.add(dataToSend);
+        }
     }
 
     @Override
