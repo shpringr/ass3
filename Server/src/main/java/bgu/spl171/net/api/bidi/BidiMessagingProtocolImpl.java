@@ -23,7 +23,6 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
     private File file = new File("Server/Files");
 
     private static List<Integer> logOns = new ArrayList<>();
-    private static String state = "";
     private static int block = 0;
     private static boolean isFirstCommand = true;
     private LinkedBlockingQueue<DATAPackets> dataQueue = new LinkedBlockingQueue<>();
