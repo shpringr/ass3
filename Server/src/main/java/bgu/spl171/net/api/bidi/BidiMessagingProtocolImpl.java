@@ -13,22 +13,17 @@ import static bgu.spl171.net.impl.packet.ERRORPacket.Errors.*;
 
 public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> {
 
-    private final static short END_OF_PACKET = -1;
     private final static short ACK_OK = 0;
+    private static List<Integer> logOns = new ArrayList<>();
+    private final static File file = new File("Server/Files");
 
     private boolean shouldTerminate = false;
     private Connections connections;
     private Integer connectionId;
-    private File file = new File("Server/Files");
-
-    private static List<Integer> logOns = new ArrayList<>();
-    private static int block = 0;
-    private static boolean isFirstCommand = true;
+    private boolean isFirstCommand = true;
     private LinkedBlockingQueue<DATAPacket> dataQueue = new LinkedBlockingQueue<>();
-    private static String state = "";
-    File fileToWrite =null;
-
-
+    private String state = "";
+    private File fileToWrite = null;
 
     @Override
     public void start(int connectionId, Connections connections) {
@@ -91,7 +86,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
         try {
             connections.disconnect(connectionId);
             logOns.remove(connectionId);
-            connections.send(connectionId, new ACKPacket((short)0));
+            connections.send(connectionId, new ACKPacket(ACK_OK));
             shouldTerminate = true;
         } catch (IOException e) {
             sendError(ERRORPacket.Errors.NOT_DEFINED, e.getMessage());
@@ -99,12 +94,12 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
     }
 
     private void handleBCastPacket() {
-        sendError(ERRORPacket.Errors.NOT_DEFINED, "");
+        sendError(ERRORPacket.Errors.NOT_DEFINED, "called BCast on server side!");
     }
 
     //TODO: can we get errors from client to server?
     private void handleErrorPacket() {
-        sendError(ERRORPacket.Errors.NOT_DEFINED, "");
+        sendError(ERRORPacket.Errors.NOT_DEFINED, "called BCast on error side!");
     }
 
     private void handleAckPacket(ACKPacket message) {
@@ -125,19 +120,16 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
         if (state.equals("writing")){
             try {
                 FileOutputStream fileOutputStream = new FileOutputStream(fileToWrite);
-                if (message.getPacketSize() == 512){
-                    fileOutputStream.write(message.getData());
-                    connections.send(connectionId, new ACKPacket(message.getBlock()));
-                }
-                else{
-                    fileOutputStream.write(message.getData());
+                fileOutputStream.write(message.getData());
+                connections.send(connectionId, new ACKPacket(message.getBlock()));
+
+                if (message.getPacketSize() != 512){
                     fileOutputStream.close();
-                    connections.send(connectionId, new ACKPacket(message.getBlock()));
                     connections.broadcast(new BCASTPacket((byte) 1, fileToWrite.getName()));
                     state="";
                 }
             } catch (FileNotFoundException e) {
-                sendError(NOT_DEFINED,e.getMessage());
+                sendError(FILE_NOT_FOUND, "");
             } catch (IOException e) {
                 sendError(NOT_DEFINED,e.getMessage());
             }
@@ -150,50 +142,56 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
         // create new file
         fileToWrite = new File(file.getPath() + "/" + fileNameToWrite);
         // tries to create new file in the system
-        boolean createFile = false;
         try {
-            createFile = fileToWrite.createNewFile();
+            boolean createFile = fileToWrite.createNewFile();
             if (createFile){
-                connections.send(connectionId, new ACKPacket((short)0));
+                connections.send(connectionId, new ACKPacket(ACK_OK));
                 state = "writing";
             }
             else {
-                //TODO ???
-                sendError(NOT_DEFINED,"FILE_ALREADY_EXISTS");
+                sendError(ERRORPacket.Errors.FILE_ALREADY_EXISTS,"");
             }
         } catch (IOException e) {
             sendError(NOT_DEFINED,e.getMessage());
-        }
 
+        } catch (SecurityException e) {
+            sendError(ERRORPacket.Errors.ACCESS_VIOLATION, "");
+        }
     }
 
     private void handleReadPacket(RRQPacket message) {
         String fileName = message.getFileName();
-        if (file.listFiles()!=null){
-            for ( File file : file.listFiles()) {
-                if(fileName.equals(file.getName())){
-                    state = "reading";
-                    try {
-                        readFileIntoDataQueue(file);
-                        //send the first packet
-                        DATAPacket dataToSend = dataQueue.poll();
-                        if (dataToSend!=null){
-                            connections.send(connectionId, dataToSend );
+        boolean isFileFound = false;
+        try {
+            if (file.listFiles() != null) {
+                for (File file : file.listFiles()) {
+                    if (fileName.equals(file.getName())) {
+                        state = "reading";
+                        isFileFound = true;
+                        try {
+                            readFileIntoDataQueue(file);
+                            //send the first packet
+                            DATAPacket dataToSend = dataQueue.poll();
+                            if (dataToSend != null) {
+                                connections.send(connectionId, dataToSend);
+                            }
+                        } catch (IOException e) {
+                            sendError(NOT_DEFINED, e.getMessage());
                         }
-                    } catch (IOException e) {
-                        sendError(NOT_DEFINED,e.getMessage());
+                        break;
                     }
-                }
-                else{
-                    sendError(ERRORPacket.Errors.FILE_NOT_FOUND,"");
+
                 }
             }
-        }
-        else{
-            sendError(NOT_DEFINED,"THERE_IS_NO_FILES_IN_THE_SERVER");
-        }
-    }
 
+            if (!isFileFound) {
+                sendError(FILE_NOT_FOUND, "");
+            }
+        } catch (SecurityException e) {
+            sendError(ERRORPacket.Errors.ACCESS_VIOLATION, "");
+        }
+
+    }
     private boolean isLegalFirstCommand(Packet message) {
         if (isFirstCommand) {
             isFirstCommand = false;
@@ -237,10 +235,9 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
     }
 
     private void broadcastMessage(byte delOrIns, String filename) {
-
         for (Integer conId : logOns)
         {
-            connections.send(connectionId, new BCASTPacket(delOrIns, filename));
+            connections.send(conId, new BCASTPacket(delOrIns, filename));
         }
     }
 

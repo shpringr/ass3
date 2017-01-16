@@ -10,7 +10,6 @@ public class ERRORPacket extends Packet {
     public enum Errors {
         NOT_DEFINED("Not defined, see error message (if any)"),
         FILE_NOT_FOUND("File not found – RRQ \\ DELRQ of non-existing file"),
-        //TODO: use in write,read,delete
         ACCESS_VIOLATION("Access violation – File cannot be written, read or deleted."),
         DISK_FULL("Disk full or allocation exceeded – No room in disk."),
         ILLEGAL_TFTP_OPERATION("Illegal TFTP operation – Unknown Opcode."),
