@@ -159,16 +159,16 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
                             connections.send(connectionId, dataToSend );
                         }
                     } catch (IOException e) {
-                        sendError(ERRORPackets.Errors.FILE_CANT_BE_READ);
+                        sendError(ERRORPackets.Errors.FILE_CANT_BE_READ, "");
                     }
                 }
                 else{
-                    sendError(ERRORPackets.Errors.FILE_NOT_FOUND);
+                    sendError(ERRORPackets.Errors.FILE_NOT_FOUND, "");
                 }
             }
         }
         else{
-            sendError(ERRORPackets.Errors.THERE_IS_NO_FILES_IN_THE_SERVER);
+            sendError(ERRORPackets.Errors.FILE_NOT_FOUND, "");
         }
     }
 
