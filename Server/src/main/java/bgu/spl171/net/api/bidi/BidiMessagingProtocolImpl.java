@@ -118,9 +118,6 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
                     dataQueue.clear();
                 }
             }
-            if (state.equals("writing")) {
-
-            }
         }
     }
 
