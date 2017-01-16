@@ -125,7 +125,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
 
                 if (message.getPacketSize() != 512){
                     fileOutputStream.close();
-                    connections.broadcast(new BCASTPacket((byte) 1, fileToWrite.getName()));
+                    broadcastMessageToLogons((byte) 1, fileToWrite.getName());
                     state="";
                 }
             } catch (FileNotFoundException e) {
@@ -225,7 +225,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
         try {
             if (file.delete()) {
                 connections.send(connectionId, new ACKPacket(ACK_OK));
-                broadcastMessage((byte) 0, message.getFilename());
+                broadcastMessageToLogons((byte) 0, message.getFilename());
             }
             else
                 sendError(ERRORPacket.Errors.FILE_NOT_FOUND, "");
@@ -234,7 +234,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
         }
     }
 
-    private void broadcastMessage(byte delOrIns, String filename) {
+    private void broadcastMessageToLogons(byte delOrIns, String filename) {
         for (Integer conId : logOns)
         {
             connections.send(conId, new BCASTPacket(delOrIns, filename));
