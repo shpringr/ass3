@@ -3,31 +3,26 @@ package bgu.spl171.net.impl.packet;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 
-public class BCASTPackets extends Packets {
-    byte deletedAdd;
-    String fileName;
+public class LOGRQPacket extends Packet {
+    private String userName;
 
-    public BCASTPackets(byte deletedAdd, String fileName) {
-        this.deletedAdd = deletedAdd;
-        this.fileName = fileName;
-        super.opCode = 9;
+
+    public LOGRQPacket(String userName) {
+        this.userName = userName;
+        super.opCode = 7;
     }
 
-    public byte getDeletedAdd() {
-        return deletedAdd;
+    public String getUserName() {
+        return userName;
     }
 
-    public String getFileName() {
-        return fileName;
-    }
 
     @Override
     public byte[] toByteArr() {
         ByteBuffer lengthBuffer = ByteBuffer.allocate(518);
         lengthBuffer.put(shortToBytes(opCode));
-        lengthBuffer.put(shortToBytes(deletedAdd));
         try {
-            lengthBuffer.put(fileName.getBytes("UTF-8"));
+            lengthBuffer.put(userName.getBytes("UTF-8"));
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }

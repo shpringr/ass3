@@ -1,18 +1,17 @@
 package bgu.spl171.net.impl.packet;
 
-
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 
-public class RRQPackets extends Packets{
+public class DELRQPacket extends Packet {
     private String fileName;
 
-    public RRQPackets(String filename) {
+    public DELRQPacket(String filename) {
         fileName = filename;
-        super.opCode = 1;
+        super.opCode = 8;
     }
 
-    public String getFileName() {
+    public String getFilename() {
         return fileName;
     }
 

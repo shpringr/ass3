@@ -1,9 +1,8 @@
 package bgu.spl171.net.impl.packet;
 
-import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 
-public class DIRQPacket extends Packets {
+public class DIRQPacket extends Packet {
 
     public DIRQPacket() {
     super.opCode = 6;

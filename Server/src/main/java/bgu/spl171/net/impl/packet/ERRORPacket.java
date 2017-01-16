@@ -3,7 +3,7 @@ package bgu.spl171.net.impl.packet;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 
-public class ERRORPackets extends Packets {
+public class ERRORPacket extends Packet {
     short errorCode;
     String errMsg;
 
@@ -30,7 +30,7 @@ public class ERRORPackets extends Packets {
         }
     }
 
-    public ERRORPackets(short errorCode, String errMsg) {
+    public ERRORPacket(short errorCode, String errMsg) {
         this.errorCode = errorCode;
         this.errMsg = errMsg;
         super.opCode = 5;

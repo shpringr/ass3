@@ -3,20 +3,18 @@ package bgu.spl171.net.impl.packet;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 
-public class DELRQPackets extends Packets {
+public class WRQPacket extends Packet {
     private String fileName;
 
-    public DELRQPackets(String filename) {
+    public WRQPacket(String filename) {
         fileName = filename;
-        super.opCode = 8;
+        super.opCode = 2;
     }
 
-    public String getFilename() {
+    public String getFileName() {
         return fileName;
     }
 
-
-    @Override
     public byte[] toByteArr() {
         ByteBuffer lengthBuffer = ByteBuffer.allocate(518);
         lengthBuffer.put(shortToBytes(opCode));
@@ -28,4 +26,6 @@ public class DELRQPackets extends Packets {
         lengthBuffer.put(shortToBytes((byte)0));
         return lengthBuffer.array();
     }
+
 }
+

@@ -1,6 +1,6 @@
 package bgu.spl171.net.impl.packet;
 
-public abstract class Packets {
+public abstract class Packet {
     protected short opCode;
 
     public short getOpCode() {

@@ -1,19 +1,19 @@
 package bgu.spl171.net.impl.packet;
 
+
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 
-public class LOGRQPackets extends Packets{
-    private String userName;
+public class RRQPacket extends Packet {
+    private String fileName;
 
-
-    public LOGRQPackets(String userName) {
-        this.userName = userName;
-        super.opCode = 7;
+    public RRQPacket(String filename) {
+        fileName = filename;
+        super.opCode = 1;
     }
 
-    public String getUserName() {
-        return userName;
+    public String getFileName() {
+        return fileName;
     }
 
 
@@ -22,7 +22,7 @@ public class LOGRQPackets extends Packets{
         ByteBuffer lengthBuffer = ByteBuffer.allocate(518);
         lengthBuffer.put(shortToBytes(opCode));
         try {
-            lengthBuffer.put(userName.getBytes("UTF-8"));
+            lengthBuffer.put(fileName.getBytes("UTF-8"));
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }

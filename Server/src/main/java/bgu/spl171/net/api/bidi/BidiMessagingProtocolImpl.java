@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 
 
-public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets> {
+public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> {
 
     private final static short END_OF_PACKET = -1;
     private final static short ACK_OK = 0;
@@ -23,7 +23,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
     private static List<Integer> logOns = new ArrayList<>();
     private static int block = 0;
     private static boolean isFirstCommand = true;
-    private LinkedBlockingQueue<DATAPackets> dataQueue = new LinkedBlockingQueue<>();
+    private LinkedBlockingQueue<DATAPacket> dataQueue = new LinkedBlockingQueue<>();
     private static String state = "";
 
 
@@ -35,24 +35,24 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
     }
 
     @Override
-    public void process(Packets message) {
+    public void process(Packet message) {
 
         if (isLegalFirstCommand(message)) {
             switch ((message.getOpCode())) {
                 case 1:
-                    handleReadPacket((RRQPackets) message);
+                    handleReadPacket((RRQPacket) message);
                     break;
 
                 case 2:
-                    handleWritePacket((WRQPackets) message);
+                    handleWritePacket((WRQPacket) message);
                     break;
 
                 case 3:
-                    handleDataPacket((DATAPackets) message);
+                    handleDataPacket((DATAPacket) message);
                     break;
 
                 case 4:
-                    handleAckPacket((ACKPackets) message);
+                    handleAckPacket((ACKPacket) message);
                     break;
 
                 case 5:
@@ -64,11 +64,11 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
                     break;
 
                 case 7:
-                    handleLoginPacket((LOGRQPackets) message);
+                    handleLoginPacket((LOGRQPacket) message);
                     break;
 
                 case 8:
-                    handleDelReqPacket((DELRQPackets) message);
+                    handleDelReqPacket((DELRQPacket) message);
                     break;
 
                 case 9:
@@ -79,7 +79,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
                     handleDiscPacket();
                     break;
                 default:
-                    sendError(ERRORPackets.Errors.ILLEGAL_TFTP_OPERATION, "");
+                    sendError(ERRORPacket.Errors.ILLEGAL_TFTP_OPERATION, "");
                     break;
             }
         }
@@ -89,26 +89,26 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
         try {
             connections.disconnect(connectionId);
             logOns.remove(connectionId);
-            connections.send(connectionId, new ACKPackets((short)0));
+            connections.send(connectionId, new ACKPacket((short)0));
             shouldTerminate = true;
         } catch (IOException e) {
-            sendError(ERRORPackets.Errors.NOT_DEFINED, e.getMessage());
+            sendError(ERRORPacket.Errors.NOT_DEFINED, e.getMessage());
         }
     }
 
     private void handleBCastPacket() {
-        sendError(ERRORPackets.Errors.NOT_DEFINED, "");
+        sendError(ERRORPacket.Errors.NOT_DEFINED, "");
     }
 
     //TODO: can we get errors from client to server?
     private void handleErrorPacket() {
-        sendError(ERRORPackets.Errors.NOT_DEFINED, "");
+        sendError(ERRORPacket.Errors.NOT_DEFINED, "");
     }
 
-    private void handleAckPacket(ACKPackets message) {
+    private void handleAckPacket(ACKPacket message) {
         if (message.getBlock()!=0) {
             if (state.equals("reading")) {
-                DATAPackets dataToSend = dataQueue.poll();
+                DATAPacket dataToSend = dataQueue.poll();
                 if (dataToSend != null) {
                     connections.send(connectionId, dataToSend);
                 } else {
@@ -122,11 +122,11 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
         }
     }
 
-    private void handleDataPacket(DATAPackets message) {
+    private void handleDataPacket(DATAPacket message) {
         message.toByteArr();
     }
 
-    private void handleWritePacket(WRQPackets message) {
+    private void handleWritePacket(WRQPacket message) {
         String fileName = message.getFileName();
         boolean fileExciste = false;
         if (file.listFiles()!=null){
@@ -145,7 +145,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
 
     }
 
-    private void handleReadPacket(RRQPackets message) {
+    private void handleReadPacket(RRQPacket message) {
         String fileName = message.getFileName();
         if (file.listFiles()!=null){
             for ( File file : file.listFiles()) {
@@ -154,30 +154,30 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
                     try {
                         getDataQueue(file);
                         //send the first packet
-                        DATAPackets dataToSend = dataQueue.poll();
+                        DATAPacket dataToSend = dataQueue.poll();
                         if (dataToSend!=null){
                             connections.send(connectionId, dataToSend );
                         }
                     } catch (IOException e) {
-                        sendError(ERRORPackets.Errors.FILE_CANT_BE_READ, "");
+                        sendError(ERRORPacket.Errors.FILE_CANT_BE_READ, "");
                     }
                 }
                 else{
-                    sendError(ERRORPackets.Errors.FILE_NOT_FOUND, "");
+                    sendError(ERRORPacket.Errors.FILE_NOT_FOUND, "");
                 }
             }
         }
         else{
-            sendError(ERRORPackets.Errors.FILE_NOT_FOUND, "");
+            sendError(ERRORPacket.Errors.FILE_NOT_FOUND, "");
         }
     }
 
-    private boolean isLegalFirstCommand(Packets message) {
+    private boolean isLegalFirstCommand(Packet message) {
         if (isFirstCommand) {
             isFirstCommand = false;
 
             if (message.getOpCode() != 7) {
-                sendError(ERRORPackets.Errors.NOT_LOGGED_IN, "");
+                sendError(ERRORPacket.Errors.NOT_LOGGED_IN, "");
                 return false;
             }
         }
@@ -197,20 +197,20 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
         }
 
         connections.send(connectionId,
-                new DATAPackets(connectionId.shortValue(), (short)filesList.length(), filesList.getBytes()));
+                new DATAPacket(connectionId.shortValue(), (short)filesList.length(), filesList.getBytes()));
     }
 
-    private void handleDelReqPacket(DELRQPackets message) {
+    private void handleDelReqPacket(DELRQPacket message) {
         File file = new File(message.getFilename());
         try {
             if (file.delete()) {
-                connections.send(connectionId, new ACKPackets(ACK_OK));
+                connections.send(connectionId, new ACKPacket(ACK_OK));
                 broadcastMessage((byte) 0, message.getFilename());
             }
             else
-                sendError(ERRORPackets.Errors.FILE_NOT_FOUND, "");
+                sendError(ERRORPacket.Errors.FILE_NOT_FOUND, "");
         } catch (SecurityException e) {
-            sendError(ERRORPackets.Errors.ACCESS_VIOLATION, "");
+            sendError(ERRORPacket.Errors.ACCESS_VIOLATION, "");
         }
     }
 
@@ -218,24 +218,24 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
 
         for (Integer conId : logOns)
         {
-            connections.send(connectionId, new BCASTPackets(delOrIns, filename));
+            connections.send(connectionId, new BCASTPacket(delOrIns, filename));
         }
     }
 
-    private void sendError(ERRORPackets.Errors errorCode, String extraMsg) {
+    private void sendError(ERRORPacket.Errors errorCode, String extraMsg) {
         connections.send(connectionId ,
-                new ERRORPackets((short) errorCode.ordinal(), errorCode.getErrorMsg() + extraMsg));
+                new ERRORPacket((short) errorCode.ordinal(), errorCode.getErrorMsg() + extraMsg));
     }
 
-    private void handleLoginPacket(LOGRQPackets message) {
+    private void handleLoginPacket(LOGRQPacket message) {
         String userName = message.getUserName();
 
         if (logOns.contains(userName)) {
-            sendError(ERRORPackets.Errors.ALREADY_LOGGED_IN, "");
+            sendError(ERRORPacket.Errors.ALREADY_LOGGED_IN, "");
         } else
             {
             logOns.add(connectionId);
-            connections.send(connectionId, new ACKPackets(ACK_OK));
+            connections.send(connectionId, new ACKPacket(ACK_OK));
         }
     }
 
@@ -245,19 +245,19 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
         byte[] dataBytes = new byte[512];
         short packetSize =  (short)fileInputStream.read(dataBytes);
         while (packetSize ==512) {
-            DATAPackets dataToSend = new DATAPackets(packetSize, blockPacket, dataBytes);
+            DATAPacket dataToSend = new DATAPacket(packetSize, blockPacket, dataBytes);
             dataQueue.add(dataToSend);
             blockPacket++;
             packetSize = (short)fileInputStream.read(dataBytes);
         }
         if (packetSize==512){
             byte[] lastDataBytes = new byte[0];
-            DATAPackets dataToSend = new DATAPackets((short)0, blockPacket, lastDataBytes );
+            DATAPacket dataToSend = new DATAPacket((short)0, blockPacket, lastDataBytes );
             dataQueue.add(dataToSend);
         }
         else {
             dataBytes = Arrays.copyOf(dataBytes, packetSize);
-            DATAPackets dataToSend = new DATAPackets(packetSize, blockPacket, dataBytes);
+            DATAPacket dataToSend = new DATAPacket(packetSize, blockPacket, dataBytes);
             dataQueue.add(dataToSend);
         }
     }

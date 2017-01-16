@@ -1,18 +1,14 @@
 package bgu.spl171.net.api;
 
 import bgu.spl171.net.impl.packet.*;
-import com.sun.org.apache.xerces.internal.impl.io.UTF8Reader;
 
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectOutput;
-import java.io.ObjectOutputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 
 /**
  * Created by ROTEM on 09/01/2017.
  */
-public class MessageEncoderDecoderImpl implements MessageEncoderDecoder<Packets> {
+public class MessageEncoderDecoderImpl implements MessageEncoderDecoder<Packet> {
 
     private final ByteBuffer opLengthBuffer = ByteBuffer.allocate(2);
     private ByteBuffer lengthBuffer;
@@ -21,180 +17,258 @@ public class MessageEncoderDecoderImpl implements MessageEncoderDecoder<Packets>
 
     private ByteBuffer errorBuffer;
     private short errorCode;
-    private byte [] errorArr = null;
+    private byte [] errorArr;
 
-    private short opCode=0;
-    private byte[] objectBytes = null;
-    private byte[] opObjectBytes = null;
+    private short opCode;
+    private byte[] objectBytes;
+    private byte[] opObjectBytes;
 
-    private byte [] packetSizeArr = null;
+    private byte [] packetSizeArr;
     private short packetSize;
-    private byte [] blockArr = null;
+    private byte [] blockArr;
     private short block;
-    private byte deletedAdd = 'e';
+    private byte deletedAdd;
 
-    private Packets res = null;
+    private Packet res;
 
+    public MessageEncoderDecoderImpl() {
+        initAll();
+    }
 
+    private void initAll() {
+        if (opLengthBuffer!= null)
+            opLengthBuffer.clear();
+        if (lengthBuffer!= null)
+            lengthBuffer.clear();
+        if (blockBuffer != null)
+            blockBuffer.clear();
+        if (packetSizeBuffer!= null)
+            packetSizeBuffer.clear();
+        if (errorBuffer!= null)
+            errorBuffer.clear();
+        errorCode =-1;
+        errorArr = null;
+        opCode=0;
+        objectBytes = null;
+        opObjectBytes = null;
+        packetSizeArr = null;
+        packetSize =0;
+        blockArr = null;
+        block=0;
+        deletedAdd = 'e';
+    }
 
     @Override
-    public Packets decodeNextByte(byte nextByte) throws UnsupportedEncodingException {
-        if (opCode==0)
+    public Packet decodeNextByte(byte nextByte) throws UnsupportedEncodingException {
+        switch (opCode)
         {
-            opLengthBuffer.put(nextByte);
-            if (!opLengthBuffer.hasRemaining()){
-                opLengthBuffer.flip();
-                opObjectBytes = opLengthBuffer.array();
-                opCode = bytesToShort(opObjectBytes);
-                switch (opCode){
-                    case 1 : case 2 :  case 7: case 8: case 9: lengthBuffer = ByteBuffer.allocate(516);
-                        break;
-                    case 3:
-                        packetSizeBuffer = ByteBuffer.allocate(2);
-                        blockBuffer = ByteBuffer.allocate(2);
-                        lengthBuffer = ByteBuffer.allocate(514);
-                    case 4: lengthBuffer = ByteBuffer.allocate(2);
-                        break;
-                    case 5:
-                        errorBuffer = ByteBuffer.allocate(2);
-                        lengthBuffer = ByteBuffer.allocate(516);
-                }
-            }
-        }
-        else {
-            switch (opCode) {
-                case 1:
-                    if (nextByte != '\0')
-                        lengthBuffer.put(nextByte);
-                    else { //nextByte == '\0'
-                        lengthBuffer.flip();
-                        objectBytes = lengthBuffer.array();
-                        String filename = new String(objectBytes, "UTF-8");
-                        res = new RRQPackets(filename);
-                        objectBytes = null;
-                    }
-                    break;
-                case 2:
-                    if (nextByte != '\0')
-                        lengthBuffer.put(nextByte);
-                    else { //nextByte == '\0'
-                        lengthBuffer.flip();
-                        objectBytes = lengthBuffer.array();
-                        String filename = new String(objectBytes, "UTF-8");
-                        res = new WRQPackets(filename);
-                        objectBytes = null;
-                    }
-                    break;
-                case 3:
-                    if (packetSizeArr == null) {
-                        packetSizeBuffer.put(nextByte);
-                        if (!packetSizeBuffer.hasRemaining()) {
-                            lengthBuffer.flip();
-                            packetSizeArr = packetSizeBuffer.array();
-                            packetSize = bytesToShort(packetSizeArr);
-                        }
-                    } else if (blockArr == null) {
-                        blockBuffer.put(nextByte);
-                        if (!blockBuffer.hasRemaining()) {
-                            lengthBuffer.flip();
-                            blockArr = blockBuffer.array();
-                            block = bytesToShort(blockArr);
-                        }
-                    } else {
-                        if (packetSize != 0) {
-                            lengthBuffer.put(nextByte);
-                            packetSize--;
-                        } else {
-                            lengthBuffer.flip();
-                            byte[] data = lengthBuffer.array();
-                            res = new DATAPackets(packetSize, block, data);
-                        }
-                    }
-                    break;
-                case 4:
-                    if (lengthBuffer.hasRemaining()) {
-                        lengthBuffer.put(nextByte);
-                    } else {
-                        lengthBuffer.flip();
-                        byte[] blockArrAck = lengthBuffer.array();
-                        short blockAck = bytesToShort(blockArrAck);
-                        res = new ACKPackets(blockAck);
-                    }
-                    break;
-                case 5:
-                    if (errorArr == null) {
-                        errorBuffer.put(nextByte);
-                        if (!errorBuffer.hasRemaining()) {
-                            errorBuffer.flip();
-                            errorArr = errorBuffer.array();
-                            errorCode = bytesToShort(errorArr);
-                        }
-                    } else {
-                        if (nextByte != '\0')
-                            lengthBuffer.put(nextByte);
-                        else { //nextByte == '\0'
-                            lengthBuffer.flip();
-                            objectBytes = lengthBuffer.array();
-                            String errMsg = new String(objectBytes, "UTF-8");
-                            res = new ERRORPackets(errorCode, errMsg);
-                            objectBytes = null;
-                        }
-                    }
-                    break;
-                case 6:
-                    res = new DIRQPacket();
-                    break;
-                case 7:
-                    if (nextByte != '\0')
-                        lengthBuffer.put(nextByte);
-                    else { //nextByte == '\0'
-                        lengthBuffer.flip();
-                        objectBytes = lengthBuffer.array();
-                        String userName = new String(objectBytes, "UTF-8");
-                        res = new LOGRQPackets(userName);
-                        objectBytes = null;
-                    }
-                    break;
-                case 8:
-                    if (nextByte != '\0')
-                        lengthBuffer.put(nextByte);
-                    else { //nextByte == '\0'
-                        lengthBuffer.flip();
-                        objectBytes = lengthBuffer.array();
-                        String fileName = new String(objectBytes, "UTF-8");
-                        res = new DELRQPackets(fileName);
-                        objectBytes = null;
-                    }
-                    break;
-                case 9:
-                    if (deletedAdd=='e'){
-                        deletedAdd = nextByte;
-                    }
-                    else{
-                        if (nextByte != '\0')
-                            lengthBuffer.put(nextByte);
-                        else { //nextByte == '\0'
-                            lengthBuffer.flip();
-                            objectBytes = lengthBuffer.array();
-                            String fileName = new String(objectBytes, "UTF-8");
-                            res = new BCASTPackets(deletedAdd, fileName);
-                            objectBytes = null;
-                        }
-                    }
-                    break;
-                case 10:
-                    res = new DISCPackets();
-            }
+            case 0:
+                initOpCodeAndBuffers(nextByte);
+                break;
 
+            case 1:
+                makeRRQPacket(nextByte);
+                break;
+
+            case 2:
+                makeWRQPacket(nextByte);
+                break;
+
+            case 3:
+                makeDataPacket(nextByte);
+                break;
+
+            case 4:
+                makeACKPacket(nextByte);
+                break;
+
+            case 5:
+                makeErrorPacket(nextByte);
+                break;
+
+            case 6:
+                makeDIRQPacket();
+                break;
+
+            case 7:
+                makeLoginPacket(nextByte);
+                break;
+
+            case 8:
+                makeDelRqPacket(nextByte);
+                break;
+
+            case 9:
+                makeBCastPacket(nextByte);
+                break;
+
+            case 10:
+                makeDiscPacket();
         }
+
         return res;
     }
 
+    private void makeDiscPacket() {
+        res = new DISCPacket();
+        initAll();
+    }
 
+    private void makeBCastPacket(byte nextByte) throws UnsupportedEncodingException {
+        if (deletedAdd=='e'){
+            deletedAdd = nextByte;
+        }
+        else{
+            if (nextByte != '\0')
+                lengthBuffer.put(nextByte);
+            else { //nextByte == '\0'
+                lengthBuffer.flip();
+                objectBytes = lengthBuffer.array();
+                String fileName = new String(objectBytes, "UTF-8");
+                res = new BCASTPacket(deletedAdd, fileName);
+                initAll();
+            }
+        }
+    }
 
+    private void makeDelRqPacket(byte nextByte) throws UnsupportedEncodingException {
+        if (nextByte != '\0')
+            lengthBuffer.put(nextByte);
+        else { //nextByte == '\0'
+            lengthBuffer.flip();
+            objectBytes = lengthBuffer.array();
+            String fileName = new String(objectBytes, "UTF-8");
+            res = new DELRQPacket(fileName);
+            initAll();
+        }
+    }
+
+    private void makeLoginPacket(byte nextByte) throws UnsupportedEncodingException {
+        if (nextByte != '\0')
+            lengthBuffer.put(nextByte);
+        else { //nextByte == '\0'
+            lengthBuffer.flip();
+            objectBytes = lengthBuffer.array();
+            String userName = new String(objectBytes, "UTF-8");
+            res = new LOGRQPacket(userName);
+            initAll();
+        }
+    }
+
+    private void makeDIRQPacket() {
+        res = new DIRQPacket();
+        initAll();
+    }
+
+    private void makeErrorPacket(byte nextByte) throws UnsupportedEncodingException {
+        if (errorArr == null) {
+            errorBuffer.put(nextByte);
+            if (!errorBuffer.hasRemaining()) {
+                errorBuffer.flip();
+                errorArr = errorBuffer.array();
+                errorCode = bytesToShort(errorArr);
+            }
+        } else {
+            if (nextByte != '\0')
+                lengthBuffer.put(nextByte);
+            else { //nextByte == '\0'
+                lengthBuffer.flip();
+                objectBytes = lengthBuffer.array();
+                String errMsg = new String(objectBytes, "UTF-8");
+                res = new ERRORPacket(errorCode, errMsg);
+                initAll();
+            }
+        }
+    }
+
+    private void makeACKPacket(byte nextByte) {
+        if (lengthBuffer.hasRemaining()) {
+            lengthBuffer.put(nextByte);
+        } else {
+            lengthBuffer.flip();
+            byte[] blockArrAck = lengthBuffer.array();
+            short blockAck = bytesToShort(blockArrAck);
+            res = new ACKPacket(blockAck);
+            initAll();
+        }
+    }
+
+    private void makeDataPacket(byte nextByte) {
+        if (packetSizeArr == null) {
+            packetSizeBuffer.put(nextByte);
+            if (!packetSizeBuffer.hasRemaining()) {
+                lengthBuffer.flip();
+                packetSizeArr = packetSizeBuffer.array();
+                packetSize = bytesToShort(packetSizeArr);
+            }
+        } else if (blockArr == null) {
+            blockBuffer.put(nextByte);
+            if (!blockBuffer.hasRemaining()) {
+                lengthBuffer.flip();
+                blockArr = blockBuffer.array();
+                block = bytesToShort(blockArr);
+            }
+        } else {
+            if (packetSize != 0) {
+                lengthBuffer.put(nextByte);
+                packetSize--;
+            } else {
+                lengthBuffer.flip();
+                byte[] data = lengthBuffer.array();
+                res = new DATAPacket(packetSize, block, data);
+                initAll();
+            }
+        }
+    }
+
+    private void makeWRQPacket(byte nextByte) throws UnsupportedEncodingException {
+        if (nextByte != '\0')
+            lengthBuffer.put(nextByte);
+        else { //nextByte == '\0'
+            lengthBuffer.flip();
+            objectBytes = lengthBuffer.array();
+            String filename = new String(objectBytes, "UTF-8");
+            res = new WRQPacket(filename);
+            initAll();
+        }
+    }
+
+    private void makeRRQPacket(byte nextByte) throws UnsupportedEncodingException {
+        if (nextByte != '\0')
+            lengthBuffer.put(nextByte);
+        else { //nextByte == '\0'
+            lengthBuffer.flip();
+            objectBytes = lengthBuffer.array();
+            String filename = new String(objectBytes, "UTF-8");
+            res = new RRQPacket(filename);
+            initAll();
+        }
+    }
+
+    private void initOpCodeAndBuffers(byte nextByte) {
+        opLengthBuffer.put(nextByte);
+        if (!opLengthBuffer.hasRemaining()){
+            opLengthBuffer.flip();
+            opObjectBytes = opLengthBuffer.array();
+            opCode = bytesToShort(opObjectBytes);
+            switch (opCode){
+                case 1 : case 2 :  case 7: case 8: case 9: lengthBuffer = ByteBuffer.allocate(516);
+                    break;
+                case 3:
+                    packetSizeBuffer = ByteBuffer.allocate(2);
+                    blockBuffer = ByteBuffer.allocate(2);
+                    lengthBuffer = ByteBuffer.allocate(514);
+                case 4: lengthBuffer = ByteBuffer.allocate(2);
+                    break;
+                case 5:
+                    errorBuffer = ByteBuffer.allocate(2);
+                    lengthBuffer = ByteBuffer.allocate(516);
+            }
+        }
+    }
 
     //@TODO SHITTTTTTTTTTTTTTTTTTTTTTTTTTTT
-    public byte[] encode(Packets message) {
+    public byte[] encode(Packet message) {
         return message.toByteArr();
     }
 

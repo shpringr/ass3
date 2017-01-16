@@ -11,7 +11,7 @@ import java.util.Random;
  */
 public class EncoderDecTest {
 
-    private static MessageEncoderDecoder<Packets> p = new MessageEncoderDecoderImpl();
+    private static MessageEncoderDecoder<Packet> p = new MessageEncoderDecoderImpl();
 
     public static void main (String []args){
 
@@ -28,9 +28,9 @@ public class EncoderDecTest {
     }
 
     private static void ERRORtest() {
-        Packets tmp = null;
+        Packet tmp = null;
         String error = "azov_oti_beshket";
-        ERRORPackets er = new ERRORPackets((short) 4, error);
+        ERRORPacket er = new ERRORPacket((short) 4, error);
         byte [] en = er.toByteArr();
         for (int i = 0 ; i < en.length ; i++){
             try {
@@ -40,7 +40,7 @@ public class EncoderDecTest {
             }
         }
 
-        System.out.println(tmp instanceof ERRORPackets);
+        System.out.println(tmp instanceof ERRORPacket);
     }
 
     private static byte[] shortTObyte(short num)
@@ -53,7 +53,7 @@ public class EncoderDecTest {
 
     private static void DATAtest() {
         Random rnd = new Random(new Date().getTime());
-        Packets tmp = null;
+        Packet tmp = null;
         byte[] size = shortTObyte((short)400);
         byte[] Opcode = shortTObyte((short) 3);
         byte[] block = shortTObyte((short) 7);
@@ -71,11 +71,11 @@ public class EncoderDecTest {
             }
         }
 
-        System.out.println(tmp instanceof DATAPackets);
+        System.out.println(tmp instanceof DATAPacket);
     }
 
     private static void DIRQtest() {
-        Packets tmp = null;
+        Packet tmp = null;
         byte[] Opcode = shortTObyte((short) 6);
         for (int i = 0 ; i < 2 ; i++){
             try {
@@ -88,7 +88,7 @@ public class EncoderDecTest {
     }
 
     private static void ACKTest() {
-        Packets tmp = null;
+        Packet tmp = null;
         byte[] Opcode = shortTObyte((short) 4);
         byte[] block = shortTObyte((short) 0);
         byte[] bytes = new byte[] {Opcode[0] , Opcode[1] , block[0] , block[1]};
@@ -99,11 +99,11 @@ public class EncoderDecTest {
                 e.printStackTrace();
             }
         }
-        System.out.println(tmp instanceof ACKPackets);
+        System.out.println(tmp instanceof ACKPacket);
     }
 
     private static void DISCTest() {
-        Packets tmp = null;
+        Packet tmp = null;
         byte[] Opcode = shortTObyte((short) 10);
         for (int i = 0 ; i < 2 ; i++){
             try {
@@ -112,11 +112,11 @@ public class EncoderDecTest {
                 e.printStackTrace();
             }
         }
-        System.out.println(tmp instanceof DISCPackets);
+        System.out.println(tmp instanceof DISCPacket);
     }
 
     private static void RRQTest() {
-        Packets tmp = null;
+        Packet tmp = null;
         String fileName = "I-have-a-programmer-hands";
         byte[] name = (fileName + '\0').getBytes();
         byte[] Opcode = shortTObyte((short) 1);
@@ -134,11 +134,11 @@ public class EncoderDecTest {
             }
         }
 
-        System.out.println(tmp instanceof RRQPackets);
+        System.out.println(tmp instanceof RRQPacket);
     }
 
     private static void WRQTest() {
-        Packets tmp = null;
+        Packet tmp = null;
         String fileName = "chocolate_or_strongberry";
         byte[] name = (fileName + '\0').getBytes();
         byte[] Opcode = shortTObyte((short) 2);
@@ -156,11 +156,11 @@ public class EncoderDecTest {
             }
         }
 
-        System.out.println(tmp instanceof WRQPackets);
+        System.out.println(tmp instanceof WRQPacket);
     }
 
     private static void DELRQtest() {
-        Packets tmp = null;
+        Packet tmp = null;
         String fileName = "Neto-Avoda";
         byte[] name = (fileName + '\0').getBytes();
         byte[] Opcode = shortTObyte((short) 8);
@@ -178,12 +178,12 @@ public class EncoderDecTest {
             }
         }
 
-        System.out.println(tmp instanceof DELRQPackets);
+        System.out.println(tmp instanceof DELRQPacket);
     }
 
 
     private static void LOGRQtest() {
-        Packets tmp = null;
+        Packet tmp = null;
         String nickName = "Spl_Took_My_Life";
         byte[] name = (nickName + '\0').getBytes();
         byte[] Opcode = shortTObyte((short)7);
@@ -201,6 +201,6 @@ public class EncoderDecTest {
             }
         }
 
-        System.out.println(tmp instanceof LOGRQPackets);
+        System.out.println(tmp instanceof LOGRQPacket);
     }
 }

@@ -2,9 +2,9 @@ package bgu.spl171.net.impl.packet;
 
 import java.nio.ByteBuffer;
 
-public class DISCPackets extends Packets {
+public class DISCPacket extends Packet {
 
-    public DISCPackets() {
+    public DISCPacket() {
         super.opCode=10;
     }
 

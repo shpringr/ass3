@@ -2,10 +2,10 @@ package bgu.spl171.net.impl.packet;
 
 import java.nio.ByteBuffer;
 
-public class ACKPackets extends Packets {
+public class ACKPacket extends Packet {
     short block;
 
-    public ACKPackets(short block) {
+    public ACKPacket(short block) {
         this.block = block;
         super.opCode = 4;
     }
