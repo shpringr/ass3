@@ -1,15 +1,10 @@
 package bgu.spl171.net.api.bidi;
 
 import bgu.spl171.net.impl.packet.*;
-import bgu.spl171.net.srv.BlockingConnectionHandler;
-import bgu.spl171.net.srv.bidi.ConnectionHandler;
-import javafx.util.Pair;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,14 +12,20 @@ import java.util.List;
 
 public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets> {
 
+    private final static short END_OF_PACKET = -1;
+    private final static short ACK_OK = 0;
+
     private boolean shouldTerminate = false;
     private Connections connections;
     private int connectionId;
+    private File file = new File("Server/Files");
+
     private static List<String> logOns = new ArrayList<>();
     private static String state = "";
     private static int block = 0;
+    private static boolean isFirstCommand = true;
+    private static ConcurrentHashMap<byte[], Integer> dataBytes;
 
-    File file = new File("Server/Files");
     @Override
     public void start(int connectionId, Connections connections) {
         this.connections = connections;
@@ -33,57 +34,31 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
 
     @Override
     public void process(Packets message) {
+
+        checkIfLoggedIn(message);
+
         switch ((message.getOpCode())){
             case 1 :
-                String fileName = ((RRQPackets)message).getFileName();
-                state = "reading";
-                short blockPacket=1;
-                if (file.listFiles()!=null){
-                    for ( File file : file.listFiles()) {
-                        if(fileName.equals(file.getName())){
-                            try {
-                                ConcurrentHashMap<byte[], Integer> dataBytes = getVectorOfBytesArr(file);
-                                while (state.equals("reading")){
-
-                                    for ( byte[] bytes: dataBytes.keySet()) {
-                                        short packetSize = dataBytes.get(bytes).shortValue();
-                                        DATAPackets dataToSend = new DATAPackets(packetSize, blockPacket, bytes);
-                                        connections.send(connectionId, dataToSend);
-                                        while (blockPacket>block)
-                                        {}
-                                        blockPacket++;
-                                    }
-                                }
-
-
-
-                            } catch (FileNotFoundException e) {
-                                e.printStackTrace();
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    }
-                }
+                handleReadPacket((RRQPackets) message);
                 break;
+
             case 2 :
-
-                ((WRQPackets)message).getFileName();
+                handleWritePacket((WRQPackets) message);
                 break;
+
             case 3:
-
-                ((DATAPackets)message).toByteArr();
+                handleDataPacket((DATAPackets) message);
                 break;
+
             case 4:
-
-                ((ACKPackets)message).toByteArr();
+                handleAckPacket((ACKPackets) message);
                 break;
+
             case 5:
-
-                ((ERRORPackets)message).toByteArr();
+                handleErrorPacket((ERRORPackets) message);
                 break;
-            case 6:
 
+            case 6:
                 handleDirPacket((DIRQPacket) message);
                 break;
 
@@ -96,19 +71,91 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
                 break;
 
             case 9:
-
-                ((BCASTPackets)message).toByteArr();
+                handleBCastPacket((BCASTPackets) message);
                 break;
+
             case 10:
-                shouldTerminate = true;
+                handleDiscPacket((DISCPackets)message);
                 break;
         }
+    }
 
+    private void handleDiscPacket(DISCPackets message) {
+        try {
+            connections.disconnect(connectionId);
+            shouldTerminate = true;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void handleBCastPacket(BCASTPackets message) {
+        message.toByteArr();
+    }
+
+    private void handleErrorPacket(ERRORPackets message) {
+        message.toByteArr();
+    }
+
+    private void handleAckPacket(ACKPackets message) {
+        block = message.getBlock();
+    }
+
+    private void handleDataPacket(DATAPackets message) {
+        message.toByteArr();
+    }
+
+    private void handleWritePacket(WRQPackets message) {
+        message.getFileName();
+    }
+
+    private void handleReadPacket(RRQPackets message) {
+        String fileName = message.getFileName();
+        state = "reading";
+        short blockPacket=1;
+        if (file.listFiles()!=null){
+            for ( File file : file.listFiles()) {
+                if(fileName.equals(file.getName())){
+                    try {
+                        dataBytes = getVectorOfBytesArr(file);
+                        while (state.equals("reading")){
+
+                            for ( byte[] bytes: dataBytes.keySet()) {
+                                short packetSize = dataBytes.get(bytes).shortValue();
+                                DATAPackets dataToSend = new DATAPackets(packetSize, blockPacket, bytes);
+                                connections.send(connectionId, dataToSend);
+                                while (blockPacket>block)
+                                {}
+                                blockPacket++;
+                            }
+                        }
+
+
+
+                    } catch (FileNotFoundException e) {
+                        e.printStackTrace();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+    }
+
+    private void checkIfLoggedIn(Packets message) {
+        if (isFirstCommand) {
+            isFirstCommand = false;
+
+            if (message.getOpCode() != 7) {
+                connections.send(connectionId, new ERRORPackets((short) ERRORPackets.Errors.NOT_LOGGED_IN.ordinal(),
+                        ERRORPackets.Errors.NOT_LOGGED_IN.getErrorMsg()));
+            }
+
+        }
     }
 
     private void handleDirPacket(DIRQPacket message) {
 
-        File file = new File("");
         File[] files = file.listFiles();
 
         String filesList = "";
@@ -127,15 +174,13 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
 
     private void handleLoginPacket(LOGRQPackets message) {
         String userName = message.getUserName();
-        if (logOns.contains(userName))
-        {
+
+        if (logOns.contains(userName)) {
             connections.send(connectionId, new ERRORPackets((short) ERRORPackets.Errors.ALREADY_LOGGED_IN.ordinal(),
                     ERRORPackets.Errors.ALREADY_LOGGED_IN.getErrorMsg()));
-        }
-        else
-        {
+        } else {
             logOns.add(userName);
-            connections.send(connectionId, new ACKPackets((short)0));
+            connections.send(connectionId, new ACKPackets((short) 0));
         }
     }
 

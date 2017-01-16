@@ -1,5 +1,6 @@
-package bgu.spl171.net.api.bidi;
+package bgu.spl171.net.srv.bidi;
 
+import bgu.spl171.net.api.bidi.Connections;
 import bgu.spl171.net.srv.bidi.ConnectionHandler;
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;

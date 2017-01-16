@@ -12,7 +12,7 @@ import java.nio.ByteBuffer;
 /**
  * Created by ROTEM on 09/01/2017.
  */
-public class MessageEncoderDecoderImpl<T> implements MessageEncoderDecoder<T> {
+public class MessageEncoderDecoderImpl implements MessageEncoderDecoder<Packets> {
 
     private final ByteBuffer opLengthBuffer = ByteBuffer.allocate(2);
     private ByteBuffer lengthBuffer;
@@ -38,7 +38,7 @@ public class MessageEncoderDecoderImpl<T> implements MessageEncoderDecoder<T> {
 
 
     @Override
-    public T decodeNextByte(byte nextByte) throws UnsupportedEncodingException {
+    public Packets decodeNextByte(byte nextByte) throws UnsupportedEncodingException {
         if (opCode==0)
         {
             opLengthBuffer.put(nextByte);
@@ -187,15 +187,15 @@ public class MessageEncoderDecoderImpl<T> implements MessageEncoderDecoder<T> {
             }
 
         }
-        return (T) res;
+        return res;
     }
 
 
 
 
     //@TODO SHITTTTTTTTTTTTTTTTTTTTTTTTTTTT
-    public byte[] encode(T message) {
-        return ((Packets)message).toByteArr();
+    public byte[] encode(Packets message) {
+        return message.toByteArr();
     }
 
     //Decode 2 bytes to short
