@@ -88,7 +88,6 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
     }
 
     private void handleDiscPacket() {
-
         try {
             connections.disconnect(connectionId);
             logOns.remove(connectionId);
@@ -97,7 +96,6 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
         } catch (IOException e) {
             sendError(ERRORPackets.Errors.NOT_DEFINED, e.getMessage());
         }
-
     }
 
     private void handleBCastPacket() {
@@ -169,8 +167,6 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
         } catch (IOException e) {
             sendError(NOT_DEFINED,e.getMessage());
         }
-
-
 
     }
 
