@@ -124,7 +124,22 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
     }
 
     private void handleWritePacket(WRQPackets message) {
-        message.getFileName();
+        String fileName = message.getFileName();
+        boolean fileExciste = false;
+        if (file.listFiles()!=null){
+            for ( File file : file.listFiles()) {
+                if(fileName.equals(file.getName())){
+                    fileExciste = true;
+                }
+            }
+        }
+        else {
+            //TODO throw error
+        }
+        if (!fileExciste){
+            
+        }
+
     }
 
     private void handleReadPacket(RRQPackets message) {
@@ -141,15 +156,16 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packets>
                             connections.send(connectionId, dataToSend );
                         }
                     } catch (IOException e) {
-                        connections.send(connectionId, new ERRORPackets((short) ERRORPackets.Errors.FILE_CANT_BE_READ.ordinal(),
-                                ERRORPackets.Errors.FILE_CANT_BE_READ.getErrorMsg()));
+                        sendError(ERRORPackets.Errors.FILE_CANT_BE_READ);
                     }
                 }
                 else{
-                    connections.send(connectionId, new ERRORPackets((short) ERRORPackets.Errors.FILE_NOT_FOUND.ordinal(),
-                            ERRORPackets.Errors.FILE_NOT_FOUND.getErrorMsg()));
+                    sendError(ERRORPackets.Errors.FILE_NOT_FOUND);
                 }
             }
+        }
+        else{
+            sendError(ERRORPackets.Errors.THERE_IS_NO_FILES_IN_THE_SERVER);
         }
     }
 
