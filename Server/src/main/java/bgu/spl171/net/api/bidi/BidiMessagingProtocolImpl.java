@@ -6,6 +6,8 @@ import java.io.*;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import static bgu.spl171.net.impl.packet.ERRORPacket.Errors.*;
@@ -15,18 +17,19 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
 
     private final static short ACK_OK = 0;
     private static List<Integer> logOns = new ArrayList<>();
+    private static ConcurrentMap<Integer, File> uploadingFiles = new ConcurrentHashMap<>();
     private final static File file = new File("Server/Files");
 
     private boolean shouldTerminate = false;
-    private Connections connections;
+    private Connections<Packet> connections;
     private Integer connectionId;
     private boolean isFirstCommand = true;
     private LinkedBlockingQueue<DATAPacket> dataQueue = new LinkedBlockingQueue<>();
+    private LinkedBlockingQueue<DATAPacket> dirqQueue = new LinkedBlockingQueue<>();
     private String state = "";
-    private File fileToWrite = null;
 
     @Override
-    public void start(int connectionId, Connections connections) {
+    public void start(int connectionId, Connections<Packet> connections) {
         this.connections = connections;
         this.connectionId = connectionId;
     }
@@ -97,13 +100,20 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
         sendError(ERRORPacket.Errors.NOT_DEFINED, "called BCast on server side!");
     }
 
-    //TODO: can we get errors from client to server?
     private void handleErrorPacket() {
-        sendError(ERRORPacket.Errors.NOT_DEFINED, "called BCast on error side!");
+        state ="";
+        if (uploadingFiles.get(connectionId) != null)
+        {
+            uploadingFiles.remove(connectionId);
+        }
+
+        dataQueue.clear();
+        dirqQueue.clear();
     }
 
     private void handleAckPacket(ACKPacket message) {
-        if (message.getBlock()!=0) {
+        if (message.getBlock()!=0)
+        {
             if (state.equals("reading")) {
                 DATAPacket dataToSend = dataQueue.poll();
                 if (dataToSend != null) {
@@ -113,19 +123,30 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
                     dataQueue.clear();
                 }
             }
+            else if (state.equals("dirq"))
+            {
+                DATAPacket dataToSend = dirqQueue.poll();
+                if (dataToSend != null) {
+                    connections.send(connectionId, dataToSend);
+                } else {
+                    state = "";
+                    dirqQueue.clear();
+                }
+            }
         }
     }
 
     private void handleDataPacket(DATAPacket message) {
         if (state.equals("writing")){
             try {
-                FileOutputStream fileOutputStream = new FileOutputStream(fileToWrite);
+                FileOutputStream fileOutputStream = new FileOutputStream(uploadingFiles.get(connectionId));
                 fileOutputStream.write(message.getData());
                 connections.send(connectionId, new ACKPacket(message.getBlock()));
 
                 if (message.getPacketSize() != 512){
                     fileOutputStream.close();
-                    broadcastMessageToLogons((byte) 1, fileToWrite.getName());
+                    broadcastMessageToLogons((byte) 1, uploadingFiles.get(connectionId).getName());
+                    uploadingFiles.remove(connectionId);
                     state="";
                 }
             } catch (FileNotFoundException e) {
@@ -140,13 +161,16 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
         String fileNameToWrite = message.getFileName();
 
         // create new file
-        fileToWrite = new File(file.getPath() + "/" + fileNameToWrite);
+        File fileToWrite = new File(file.getPath() + "/" + fileNameToWrite);
+
         // tries to create new file in the system
         try {
             boolean createFile = fileToWrite.createNewFile();
             if (createFile){
-                connections.send(connectionId, new ACKPacket(ACK_OK));
+                uploadingFiles.put(connectionId, fileToWrite);
                 state = "writing";
+                connections.send(connectionId, new ACKPacket(ACK_OK));
+
             }
             else {
                 sendError(ERRORPacket.Errors.FILE_ALREADY_EXISTS,"");
@@ -194,30 +218,40 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
     }
     private boolean isLegalFirstCommand(Packet message) {
         if (isFirstCommand) {
-            isFirstCommand = false;
-
             if (message.getOpCode() != 7) {
                 sendError(ERRORPacket.Errors.NOT_LOGGED_IN, "");
                 return false;
+            }
+            else {
+                isFirstCommand = false;
             }
         }
 
         return true;
     }
 
-    //TODO: make sure it doesnt return file that are uploading.
-    //TODO: what happens if the list is more than 512b?
     private void handleDirqPacket() {
 
         File[] files = file.listFiles();
+        List<String> filesToIgnore = new ArrayList<>();
+
+        for (File currUpload: uploadingFiles.values()) {
+            filesToIgnore.add(currUpload.getName());
+        }
 
         String filesList = "";
         for (File f: files) {
-            filesList += f.getName() + '\0';
+            if (!filesToIgnore.contains(f.getName()))
+                filesList += f.getName() + '\0';
         }
 
-        connections.send(connectionId,
-                new DATAPacket(connectionId.shortValue(), (short)filesList.length(), filesList.getBytes()));
+        state = "dirq";
+        putStringIntoDirqQueue(filesList);
+
+        DATAPacket dataToSend = dirqQueue.poll();
+        if (dataToSend != null) {
+            connections.send(connectionId, dataToSend);
+        }
     }
 
     private void handleDelReqPacket(DELRQPacket message) {
@@ -258,6 +292,15 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
         }
     }
 
+    private void putStringIntoDirqQueue(String string)
+    {
+        int maxIndex = (string.length() / 512) + 1;
+
+        for (int i = 1; i <= maxIndex; i++) {
+            String nextMessage = string.substring(i,512);
+            dirqQueue.add(new DATAPacket((short)nextMessage.length(), (short) maxIndex, string.getBytes()));
+        }
+    }
     private void readFileIntoDataQueue(File file) throws IOException {
         short blockPacket=1;
         FileInputStream fileInputStream = new FileInputStream(file);
