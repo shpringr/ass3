@@ -269,7 +269,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
             blockPacket++;
             packetSize = (short)fileInputStream.read(dataBytes);
         }
-        if (packetSize==512){
+        if (packetSize==-1){
             byte[] lastDataBytes = new byte[0];
             DATAPacket dataToSend = new DATAPacket((short)0, blockPacket, lastDataBytes );
             dataQueue.add(dataToSend);
