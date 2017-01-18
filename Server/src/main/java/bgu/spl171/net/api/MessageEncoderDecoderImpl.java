@@ -105,7 +105,9 @@ public class MessageEncoderDecoderImpl implements MessageEncoderDecoder<Packet> 
 
         }
 
-        return res;
+        Packet tmp = res;
+        res = null;
+        return tmp;
     }
 
     private void makeBCastPacket(byte nextByte) throws UnsupportedEncodingException {
