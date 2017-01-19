@@ -1,5 +1,7 @@
-package bgu.spl171.net.api.bidi;
+package bgu.spl171.net.impl.TFTP;
 
+import bgu.spl171.net.api.bidi.BidiMessagingProtocol;
+import bgu.spl171.net.api.bidi.Connections;
 import bgu.spl171.net.impl.packet.*;
 
 import java.io.*;
