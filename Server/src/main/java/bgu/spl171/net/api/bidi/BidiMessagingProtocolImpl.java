@@ -98,6 +98,8 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
         state ="";
         if (uploadingFiles.get(connectionId) != null)
         {
+            File file = uploadingFiles.get(connectionId);
+            file.delete();
             uploadingFiles.remove(connectionId);
         }
 

@@ -19,14 +19,16 @@ public class LOGRQPacket extends Packet {
 
     @Override
     public byte[] toByteArr() {
-        ByteBuffer lengthBuffer = ByteBuffer.allocate(2+getUserName().length()+1);
-        lengthBuffer.put(shortToBytes(opCode));
         try {
-            lengthBuffer.put(userName.getBytes("UTF-8"));
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        }
+            byte[] msgBytes = userName.getBytes("UTF-8");
+            ByteBuffer lengthBuffer = ByteBuffer.allocate(2+msgBytes.length+1);
+        lengthBuffer.put(shortToBytes(opCode));
+            lengthBuffer.put(msgBytes);
         lengthBuffer.put((byte)0);
         return lengthBuffer.array();
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+            return new byte[0];
+        }
     }
 }

@@ -23,15 +23,17 @@ public class BCASTPacket extends Packet {
 
     @Override
     public byte[] toByteArr() {
-        ByteBuffer lengthBuffer = ByteBuffer.allocate(2+1+fileName.length()+1);
+     try{
+         byte[] bytes = fileName.getBytes("UTF-8");
+        ByteBuffer lengthBuffer = ByteBuffer.allocate(2+1+bytes.length+1);
         lengthBuffer.put(shortToBytes(opCode));
         lengthBuffer.put(deletedAdd);
-        try {
-            lengthBuffer.put(fileName.getBytes("UTF-8"));
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        }
+            lengthBuffer.put(bytes);
         lengthBuffer.put((byte)0);
         return lengthBuffer.array();
+    } catch (UnsupportedEncodingException e) {
+        e.printStackTrace();
+        return new byte[0];
+    }
     }
 }
