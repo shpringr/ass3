@@ -277,7 +277,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
 
     private void sendError(ERRORPacket.Errors errorCode, String extraMsg) {
         connections.send(connectionId ,
-                new ERRORPacket((short) errorCode.ordinal(), errorCode.getErrorMsg() + extraMsg));
+                new ERRORPacket((short) errorCode.ordinal(), errorCode.getErrorMsg() + extraMsg + '\0'));
     }
 
     private void handleLoginPacket(LOGRQPacket message) {
