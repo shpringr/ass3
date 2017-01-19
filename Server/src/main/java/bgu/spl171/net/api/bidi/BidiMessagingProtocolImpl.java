@@ -16,17 +16,17 @@ import static bgu.spl171.net.impl.packet.ERRORPacket.Errors.*;
 public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> {
 
     private final static short ACK_OK = 0;
-    private static List<Integer> logOns = new ArrayList<>();
+    private static ConcurrentMap<Integer, String> logOns = new ConcurrentHashMap<>();
     private static ConcurrentMap<Integer, File> uploadingFiles = new ConcurrentHashMap<>();
     private final static File file = new File("Server/Files");
+    private static Connections<Packet> connections;
+    private static Integer connectionId;
 
-    private boolean shouldTerminate = false;
-    private Connections<Packet> connections;
-    private Integer connectionId;
-    private boolean isFirstCommand = true;
-    private LinkedBlockingQueue<DATAPacket> dataQueue = new LinkedBlockingQueue<>();
-    private LinkedBlockingQueue<DATAPacket> dirqQueue = new LinkedBlockingQueue<>();
-    private String state = "";
+    private static boolean shouldTerminate = false;
+    private static boolean isFirstCommand = true;
+    private static LinkedBlockingQueue<DATAPacket> dataQueue = new LinkedBlockingQueue<>();
+    private static LinkedBlockingQueue<DATAPacket> dirqQueue = new LinkedBlockingQueue<>();
+    private static String state = "";
 
     @Override
     public void start(int connectionId, Connections<Packet> connections) {
@@ -269,7 +269,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
     }
 
     private void broadcastMessageToLogons(byte delOrIns, String filename) {
-        for (Integer conId : logOns)
+        for (Integer conId : logOns.keySet())
         {
             connections.send(conId, new BCASTPacket(delOrIns, filename));
         }
@@ -283,11 +283,11 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
     private void handleLoginPacket(LOGRQPacket message) {
         String userName = message.getUserName();
 
-        if (logOns.contains(userName)) {
+        if (logOns.containsValue(userName)) {
             sendError(ERRORPacket.Errors.ALREADY_LOGGED_IN, "");
         } else
             {
-            logOns.add(connectionId);
+            logOns.put(connectionId, userName);
             connections.send(connectionId, new ACKPacket(ACK_OK));
         }
     }
@@ -295,10 +295,17 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
     private void putStringIntoDirqQueue(String string)
     {
         int maxIndex = (string.length() / 512) + 1;
+        int lastPartSize = (string.length() % 512) == 0  ? 512 : (string.length() % 512);
 
         for (int i = 1; i <= maxIndex; i++) {
-            String nextMessage = string.substring(i,512);
-            dirqQueue.add(new DATAPacket((short)nextMessage.length(), (short) maxIndex, string.getBytes()));
+            String currMessage ;
+            if (i==maxIndex)
+                currMessage = string.substring((i-1)*512, (lastPartSize + (i-1)*512) - 1);
+            else
+                currMessage = string.substring((i-1)*512,((i-1)*512+512) - 1);
+
+            dirqQueue.add(new DATAPacket((short)currMessage.length(),
+                    (short)i, currMessage.getBytes()));
         }
     }
     private void readFileIntoDataQueue(File file) throws IOException {

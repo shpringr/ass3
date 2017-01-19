@@ -44,15 +44,19 @@ public class ERRORPacket extends Packet {
 
     @Override
     public byte[] toByteArr() {
-        ByteBuffer lengthBuffer = ByteBuffer.allocate(2+2+getErrMsg().length()+1);
+        try {
+            byte[] msgBytes = errMsg.getBytes("UTF-8");
+        ByteBuffer lengthBuffer = ByteBuffer.allocate(2+2+msgBytes.length+1);
         lengthBuffer.put(shortToBytes(opCode));
         lengthBuffer.put(shortToBytes(errorCode));
-        try {
-            lengthBuffer.put(errMsg.getBytes("UTF-8"));
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        }
+        lengthBuffer.put(msgBytes);
+
         lengthBuffer.put((byte)0);
         return lengthBuffer.array();
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+            return new byte[0];
+        }
+
     }
 }
