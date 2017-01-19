@@ -205,6 +205,10 @@ public class MessageEncoderDecoderImpl implements MessageEncoderDecoder<Packet> 
                 res = new DATAPacket((short) bytes.length, block, bytes);
                 initAll();
             }
+            else if (packetSize == -1) {
+                res = new DATAPacket((short) 0, block, new byte[0]);
+                initAll();
+            }
         }
     }
 

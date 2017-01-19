@@ -86,14 +86,8 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
     }
 
     private void handleDiscPacket() {
-        try {
-            connections.disconnect(connectionId);
-            logOns.remove(connectionId);
-            connections.send(connectionId, new ACKPacket(ACK_OK));
-            shouldTerminate = true;
-        } catch (IOException e) {
-            sendError(ERRORPacket.Errors.NOT_DEFINED, e.getMessage());
-        }
+        state="disc";
+        connections.send(connectionId, new ACKPacket(ACK_OK));
     }
 
     private void handleBCastPacket() {
@@ -134,6 +128,18 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
                 }
             }
         }
+
+        if (state.equals("disc"))
+        {
+            try {
+                connections.disconnect(connectionId);
+                logOns.remove(connectionId);
+                state="";
+                shouldTerminate = true;
+            } catch (IOException e) {
+                sendError(ERRORPacket.Errors.NOT_DEFINED, e.getMessage());
+            }
+        }
     }
 
     private void handleDataPacket(DATAPacket message) {
@@ -165,6 +171,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
 
         // tries to create new file in the system
         try {
+            //TODO: when file dowsnt have .mp3 etc it doesnt work. ok?
             boolean createFile = fileToWrite.createNewFile();
             if (createFile){
                 uploadingFiles.put(connectionId, fileToWrite);
