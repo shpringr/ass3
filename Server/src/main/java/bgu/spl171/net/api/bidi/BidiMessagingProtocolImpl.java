@@ -264,9 +264,9 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
     }
 
     private void handleDelReqPacket(DELRQPacket message) {
-        File file = new File(message.getFilename());
+        File fileToDel = new File(file.getPath() + "/" + message.getFilename());
         try {
-            if (file.delete()) {
+            if (fileToDel.delete()) {
                 connections.send(connectionId, new ACKPacket(ACK_OK));
                 broadcastMessageToLogons((byte) 0, message.getFilename());
             }
