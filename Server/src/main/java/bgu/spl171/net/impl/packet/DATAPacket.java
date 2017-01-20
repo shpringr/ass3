@@ -28,11 +28,11 @@ public class DATAPacket extends Packet {
 
     @Override
     public byte[] toByteArr() {
-        ByteBuffer lengthBuffer = ByteBuffer.allocate(2+2+2+data.length);
+        ByteBuffer lengthBuffer = ByteBuffer.allocate(2+2+2+(data.length == 0 ? 1 : data.length));
         lengthBuffer.put(shortToBytes(opCode));
         lengthBuffer.put(shortToBytes(packetSize));
         lengthBuffer.put(shortToBytes(block));
-        lengthBuffer.put(data);
+        lengthBuffer.put(data.length == 0 ? new byte[]{'\0'} : data);
         return lengthBuffer.array();
     }
 }
