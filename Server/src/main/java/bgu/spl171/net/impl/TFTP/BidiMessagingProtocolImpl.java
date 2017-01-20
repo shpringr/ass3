@@ -110,35 +110,27 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
     }
 
     private void handleAckPacket(ACKPacket message) {
-        if (message.getBlock()!=0)
-        {
-            if (state.equals("reading")) {
-                DATAPacket dataToSend = dataQueue.poll();
-                if (dataToSend != null) {
-                    connections.send(connectionId, dataToSend);
-                } else {
-                    state = "";
-                    dataQueue.clear();
-                }
+        if (state.equals("reading")) {
+            DATAPacket dataToSend = dataQueue.poll();
+            if (dataToSend != null) {
+                connections.send(connectionId, dataToSend);
+            } else {
+                state = "";
+                dataQueue.clear();
             }
-            else if (state.equals("dirq"))
-            {
-                DATAPacket dataToSend = dirqQueue.poll();
-                if (dataToSend != null) {
-                    connections.send(connectionId, dataToSend);
-                } else {
-                    state = "";
-                    dirqQueue.clear();
-                }
+        } else if (state.equals("dirq")) {
+            DATAPacket dataToSend = dirqQueue.poll();
+            if (dataToSend != null) {
+                connections.send(connectionId, dataToSend);
+            } else {
+                state = "";
+                dirqQueue.clear();
             }
-        }
-
-        if (state.equals("disc"))
-        {
+        } else if (state.equals("disc")) {
             try {
                 connections.disconnect(connectionId);
                 logOns.remove(connectionId);
-                state="";
+                state = "";
                 shouldTerminate = true;
             } catch (IOException e) {
                 sendError(ERRORPacket.Errors.NOT_DEFINED, e.getMessage());
