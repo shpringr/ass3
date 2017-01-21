@@ -163,7 +163,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
         String fileNameToWrite = message.getFileName();
 
         // create new file
-        File fileToWrite = new File(file.getPath() + File.separator + fileNameToWrite);
+        File fileToWrite = new File("Files" + File.separator+ fileNameToWrite);
 
         // tries to create new file in the system
         try {
@@ -257,7 +257,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
     }
 
     private void handleDelReqPacket(DELRQPacket message) {
-        File fileToDel = new File(file.getPath() + File.separator+ message.getFilename());
+        File fileToDel = new File("Files" + File.separator+ message.getFilename());
         try {
             if (fileToDel.delete()) {
                 connections.send(connectionId, new ACKPacket(ACK_OK));
