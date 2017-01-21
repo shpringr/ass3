@@ -20,7 +20,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
     private final static short ACK_OK = 0;
     private static ConcurrentMap<Integer, String> logOns = new ConcurrentHashMap<>();
     private static ConcurrentMap<Integer, File> uploadingFiles = new ConcurrentHashMap<>();
-    private final static File file = new File("Server/Files");
+    private final static File file = new File("Files");
     private static Connections<Packet> connections;
 
     private Integer connectionId;
@@ -163,7 +163,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
         String fileNameToWrite = message.getFileName();
 
         // create new file
-        File fileToWrite = new File(file.getPath() + "/" + fileNameToWrite);
+        File fileToWrite = new File(file.getPath() + File.separator + fileNameToWrite);
 
         // tries to create new file in the system
         try {
@@ -258,7 +258,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
     }
 
     private void handleDelReqPacket(DELRQPacket message) {
-        File fileToDel = new File(file.getPath() + "/" + message.getFilename());
+        File fileToDel = new File(file.getPath() + File.separator+ message.getFilename());
         try {
             if (fileToDel.delete()) {
                 connections.send(connectionId, new ACKPacket(ACK_OK));
