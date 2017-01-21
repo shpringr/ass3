@@ -7,9 +7,11 @@ import bgu.spl171.net.srv.Server;
 public class ReactorMain {
 
     public static void main(String[] args) {
+        int port = Integer.parseInt(args[0]);
+
         Server.reactor(
                 Runtime.getRuntime().availableProcessors(),
-                7777, //port
+                port, //port
                 () ->  new BidiMessagingProtocolImpl(), //protocol factory
                 MessageEncoderDecoderImpl::new //message encoder decoder factory
         ).serve();
