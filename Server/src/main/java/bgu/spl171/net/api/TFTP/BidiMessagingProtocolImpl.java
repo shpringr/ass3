@@ -167,7 +167,6 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
 
         // tries to create new file in the system
         try {
-            //TODO: when file dowsnt have .mp3 etc it doesnt work. ok?
             boolean createFile = fileToWrite.createNewFile();
             if (createFile){
                 uploadingFiles.put(connectionId, fileToWrite);
@@ -286,9 +285,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
     private void handleLoginPacket(LOGRQPacket message) {
         String userName = message.getUserName();
 
-        //TODO : WHAT ABOUT IF THE SAME CONNID LOGGGED WITH DIFFERENT NAME?
-        // TODO: ADD logOns.containsKey(connectionId)?
-        if (logOns.containsValue(userName)) {
+        if (logOns.containsValue(userName) || logOns.containsKey(connectionId)) {
             sendError(ERRORPacket.Errors.ALREADY_LOGGED_IN, "");
         } else
             {
