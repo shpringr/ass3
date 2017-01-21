@@ -22,17 +22,17 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
     private static ConcurrentMap<Integer, File> uploadingFiles = new ConcurrentHashMap<>();
     private final static File file = new File("Server/Files");
     private static Connections<Packet> connections;
-    private static Integer connectionId;
 
-    private static boolean shouldTerminate = false;
-    private static boolean isFirstCommand = true;
-    private static LinkedBlockingQueue<DATAPacket> dataQueue = new LinkedBlockingQueue<>();
-    private static LinkedBlockingQueue<DATAPacket> dirqQueue = new LinkedBlockingQueue<>();
-    private static String state = "";
+    private Integer connectionId;
+    private boolean shouldTerminate = false;
+    private boolean isFirstCommand = true;
+    private LinkedBlockingQueue<DATAPacket> dataQueue = new LinkedBlockingQueue<>();
+    private LinkedBlockingQueue<DATAPacket> dirqQueue = new LinkedBlockingQueue<>();
+    private String state = "";
 
     @Override
-    public void start(int connectionId, Connections<Packet> connections) {
-        this.connections = connections;
+    public void start(int connectionId, Connections<Packet> pConnections) {
+        connections = pConnections;
         this.connectionId = connectionId;
     }
 
