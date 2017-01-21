@@ -335,6 +335,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
             DATAPacket dataToSend = new DATAPacket(packetSize, blockPacket, dataBytes);
             dataQueue.add(dataToSend);
         }
+        fileInputStream.close();
     }
 
     @Override
