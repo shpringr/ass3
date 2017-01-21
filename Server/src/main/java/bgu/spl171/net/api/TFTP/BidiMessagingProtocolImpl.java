@@ -22,6 +22,9 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
     private static ConcurrentMap<Integer, File> uploadingFiles = new ConcurrentHashMap<>();
     private final static File file = new File("Files");
     private static Connections<Packet> connections;
+    private static final Object lockCreateFile = new Object();
+    private static final Object lockReadFile = new Object();
+
 
     private Integer connectionId;
     private boolean shouldTerminate = false;
@@ -167,15 +170,18 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
 
         // tries to create new file in the system
         try {
-            boolean createFile = fileToWrite.createNewFile();
-            if (createFile){
-                uploadingFiles.put(connectionId, fileToWrite);
-                state = "writing";
-                connections.send(connectionId, new ACKPacket(ACK_OK));
-
-            }
-            else {
-                sendError(ERRORPacket.Errors.FILE_ALREADY_EXISTS,"");
+            synchronized (lockCreateFile)
+            {
+                boolean createFile = fileToWrite.createNewFile();
+                if (createFile) {
+                    uploadingFiles.put(connectionId, fileToWrite);
+                    state = "writing";
+                    connections.send(connectionId, new ACKPacket(ACK_OK));
+                }
+                else
+                    {
+                    sendError(ERRORPacket.Errors.FILE_ALREADY_EXISTS,"");
+                }
             }
         } catch (IOException e) {
             sendError(NOT_DEFINED,e.getMessage());
@@ -191,7 +197,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
         try {
             if (file.listFiles() != null) {
                 for (File file : file.listFiles()) {
-                    if (fileName.equals(file.getName())) {
+                    if (fileName.equals(file.getName()) && !uploadingFiles.containsValue(file)) {
                         state = "reading";
                         isFileFound = true;
                         try {
@@ -232,6 +238,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
         return true;
     }
 
+
     private void handleDirqPacket() {
 
         File[] files = file.listFiles();
@@ -240,31 +247,42 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
         for (File currUpload: uploadingFiles.values()) {
             filesToIgnore.add(currUpload.getName());
         }
-
         String filesList = "";
-        for (File f: files) {
-            if (!filesToIgnore.contains(f.getName()))
-                filesList += f.getName() + '\0';
+        if(files!=null && files.length != 0){
+            for (File f: files) {
+                if (!filesToIgnore.contains(f.getName()))
+                    filesList += f.getName() + '\0';
+            }
+
+
+            state = "dirq";
+            putStringIntoDirqQueue(filesList);
+
+            DATAPacket dataToSend = dirqQueue.poll();
+            if (dataToSend != null) {
+                connections.send(connectionId, dataToSend);
+            }
+        }
+        else{
+            sendError( ERRORPacket.Errors.NOT_DEFINED , "");
         }
 
-        state = "dirq";
-        putStringIntoDirqQueue(filesList);
-
-        DATAPacket dataToSend = dirqQueue.poll();
-        if (dataToSend != null) {
-            connections.send(connectionId, dataToSend);
-        }
     }
 
     private void handleDelReqPacket(DELRQPacket message) {
         File fileToDel = new File("Files" + File.separator+ message.getFilename());
         try {
-            if (fileToDel.delete()) {
-                connections.send(connectionId, new ACKPacket(ACK_OK));
-                broadcastMessageToLogons((byte) 0, message.getFilename());
+            if (!uploadingFiles.containsValue(fileToDel)) {
+                if (fileToDel.delete()) {
+                    connections.send(connectionId, new ACKPacket(ACK_OK));
+                    broadcastMessageToLogons((byte) 0, message.getFilename());
+                } else
+                    sendError(ERRORPacket.Errors.FILE_NOT_FOUND, "");
             }
             else
-                sendError(ERRORPacket.Errors.FILE_NOT_FOUND, "");
+            {
+                sendError(ERRORPacket.Errors.NOT_DEFINED, "");
+            }
         } catch (SecurityException e) {
             sendError(ERRORPacket.Errors.ACCESS_VIOLATION, "");
         }
@@ -311,28 +329,30 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
         }
     }
     private void readFileIntoDataQueue(File file) throws IOException {
-        short blockPacket=1;
-        FileInputStream fileInputStream = new FileInputStream(file);
-        byte[] dataBytes = new byte[512];
-        short packetSize =  (short)fileInputStream.read(dataBytes);
-        while (packetSize ==512) {
-            DATAPacket dataToSend = new DATAPacket(packetSize, blockPacket, dataBytes);
-            dataQueue.add(dataToSend);
-            blockPacket++;
-            dataBytes = new byte[512];
-            packetSize = (short)fileInputStream.read(dataBytes);
+        synchronized (lockReadFile) {
+            short blockPacket = 1;
+
+            FileInputStream fileInputStream = new FileInputStream(file);
+            byte[] dataBytes = new byte[512];
+            short packetSize = (short) fileInputStream.read(dataBytes);
+            while (packetSize == 512) {
+                DATAPacket dataToSend = new DATAPacket(packetSize, blockPacket, dataBytes);
+                dataQueue.add(dataToSend);
+                blockPacket++;
+                dataBytes = new byte[512];
+                packetSize = (short) fileInputStream.read(dataBytes);
+            }
+            if (packetSize == -1) {
+                byte[] lastDataBytes = new byte[0];
+                DATAPacket dataToSend = new DATAPacket((short) 0, blockPacket, lastDataBytes);
+                dataQueue.add(dataToSend);
+            } else {
+                dataBytes = Arrays.copyOf(dataBytes, packetSize);
+                DATAPacket dataToSend = new DATAPacket(packetSize, blockPacket, dataBytes);
+                dataQueue.add(dataToSend);
+            }
+            fileInputStream.close();
         }
-        if (packetSize==-1){
-            byte[] lastDataBytes = new byte[0];
-            DATAPacket dataToSend = new DATAPacket((short)0, blockPacket, lastDataBytes );
-            dataQueue.add(dataToSend);
-        }
-        else {
-            dataBytes = Arrays.copyOf(dataBytes, packetSize);
-            DATAPacket dataToSend = new DATAPacket(packetSize, blockPacket, dataBytes);
-            dataQueue.add(dataToSend);
-        }
-        fileInputStream.close();
     }
 
     @Override
