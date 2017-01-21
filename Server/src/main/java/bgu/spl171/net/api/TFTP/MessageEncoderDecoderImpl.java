@@ -6,9 +6,6 @@ import bgu.spl171.net.api.packet.*;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 
-/**
- * Created by ROTEM on 09/01/2017.
- */
 public class MessageEncoderDecoderImpl implements MessageEncoderDecoder<Packet> {
 
     private final ByteBuffer opLengthBuffer = ByteBuffer.allocate(2);
