@@ -141,7 +141,7 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
     private void handleDataPacket(DATAPacket message) {
         if (state.equals("writing")){
             try {
-                FileOutputStream fileOutputStream = new FileOutputStream(uploadingFiles.get(connectionId));
+                FileOutputStream fileOutputStream = new FileOutputStream(uploadingFiles.get(connectionId),message.getBlock()!= 1);
                 fileOutputStream.write(message.getData());
                 connections.send(connectionId, new ACKPacket(message.getBlock()));
                 fileOutputStream.close();
