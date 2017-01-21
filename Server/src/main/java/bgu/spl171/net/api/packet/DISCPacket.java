@@ -1,4 +1,4 @@
-package bgu.spl171.net.impl.packet;
+package bgu.spl171.net.api.packet;
 
 import java.nio.ByteBuffer;
 

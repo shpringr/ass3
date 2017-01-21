@@ -1,8 +1,8 @@
-package bgu.spl171.net.impl.TFTP;
+package bgu.spl171.net.api.TFTP;
 
 import bgu.spl171.net.api.bidi.BidiMessagingProtocol;
 import bgu.spl171.net.api.bidi.Connections;
-import bgu.spl171.net.impl.packet.*;
+import bgu.spl171.net.api.packet.*;
 
 import java.io.*;
 import java.util.Arrays;
@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import static bgu.spl171.net.impl.packet.ERRORPacket.Errors.*;
+import static bgu.spl171.net.api.packet.ERRORPacket.Errors.*;
 
 
 public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> {

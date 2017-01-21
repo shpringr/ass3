@@ -1,7 +1,7 @@
-package bgu.spl171.net.impl.TFTP;
+package bgu.spl171.net.api.TFTP;
 
 import bgu.spl171.net.api.MessageEncoderDecoder;
-import bgu.spl171.net.impl.packet.*;
+import bgu.spl171.net.api.packet.*;
 
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
