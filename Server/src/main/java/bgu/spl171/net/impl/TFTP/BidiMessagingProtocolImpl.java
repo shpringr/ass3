@@ -144,9 +144,9 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
                 FileOutputStream fileOutputStream = new FileOutputStream(uploadingFiles.get(connectionId));
                 fileOutputStream.write(message.getData());
                 connections.send(connectionId, new ACKPacket(message.getBlock()));
+                fileOutputStream.close();
 
                 if (message.getPacketSize() != 512){
-                    fileOutputStream.close();
                     broadcastMessageToLogons((byte) 1, uploadingFiles.get(connectionId).getName());
                     uploadingFiles.remove(connectionId);
                     state="";
@@ -286,6 +286,8 @@ public class BidiMessagingProtocolImpl implements BidiMessagingProtocol<Packet> 
     private void handleLoginPacket(LOGRQPacket message) {
         String userName = message.getUserName();
 
+        //TODO : WHAT ABOUT IF THE SAME CONNID LOGGGED WITH DIFFERENT NAME?
+        // TODO: ADD logOns.containsKey(connectionId)?
         if (logOns.containsValue(userName)) {
             sendError(ERRORPacket.Errors.ALREADY_LOGGED_IN, "");
         } else
